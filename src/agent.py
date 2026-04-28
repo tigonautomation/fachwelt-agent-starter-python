@@ -13,7 +13,7 @@ from livekit.agents import (
     inference,
     room_io,
 )
-from livekit.plugins import ai_coustics, elevenlabs, silero
+from livekit.plugins import ai_coustics, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 logger = logging.getLogger("agent")
@@ -22,10 +22,10 @@ load_dotenv(".env.local")
 
 AGENT_MODEL = "openai/gpt-4.1"
 
-# ElevenLabs Leonie — Hochdeutsch, B2B-positioned (verified vault research 2026-04-20).
-# Fallback Lea Brandt: pMrwpTuGOma7Nubxs5jo (warmer)
-TTS_VOICE_ID = "uvysWDLbKpA4XvpD3GI6"
-TTS_MODEL = "eleven_turbo_v2_5"
+# Cartesia Sonic-3 multilingual — language="de" forces German prosody
+# Starter voice. Swap via cartesia.ai/playground for a German female voice (search "german female"
+# or "Lea" / "Sonja"). Copy the UUID and replace below.
+TTS_VOICE_ID = "9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"
 
 FACHWELT_PROMPT = """# Fachwelt Marketplace — Vorqualifizierungs-Agent
 
@@ -171,17 +171,10 @@ async def fachwelt_agent(ctx: JobContext):
     session = AgentSession(
         stt=inference.STT(model="deepgram/nova-3", language="de"),
         llm=inference.LLM(model=AGENT_MODEL),
-        tts=elevenlabs.TTS(
-            voice_id=TTS_VOICE_ID,
-            model=TTS_MODEL,
+        tts=inference.TTS(
+            model="cartesia/sonic-3",
+            voice=TTS_VOICE_ID,
             language="de",
-            voice_settings=elevenlabs.VoiceSettings(
-                stability=0.5,
-                similarity_boost=0.75,
-                style=0.0,
-                use_speaker_boost=False,
-                speed=1.1,
-            ),
         ),
         turn_detection=MultilingualModel(),
         vad=ctx.proc.userdata["vad"],
