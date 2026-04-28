@@ -13,7 +13,7 @@ from livekit.agents import (
     inference,
     room_io,
 )
-from livekit.plugins import ai_coustics, silero
+from livekit.plugins import ai_coustics, elevenlabs, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 logger = logging.getLogger("agent")
@@ -22,9 +22,10 @@ load_dotenv(".env.local")
 
 AGENT_MODEL = "openai/gpt-4.1"
 
-# Cartesia Sonic-3 voice ID — swap for a German female voice from cartesia.ai/playground
-# Default below is the starter sample (English). Replace with German voice ID before real calls.
-TTS_VOICE_ID = "9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"
+# ElevenLabs Leonie — Hochdeutsch, B2B-positioned (verified vault research 2026-04-20).
+# Fallback Lea Brandt: pMrwpTuGOma7Nubxs5jo (warmer)
+TTS_VOICE_ID = "uvysWDLbKpA4XvpD3GI6"
+TTS_MODEL = "eleven_turbo_v2_5"
 
 FACHWELT_PROMPT = """# Fachwelt Marketplace — Vorqualifizierungs-Agent
 
