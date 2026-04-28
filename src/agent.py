@@ -171,10 +171,25 @@ async def fachwelt_agent(ctx: JobContext):
     session = AgentSession(
         stt=inference.STT(model="deepgram/nova-3", language="de"),
         llm=inference.LLM(model=AGENT_MODEL),
-        tts=inference.TTS(model="cartesia/sonic-3", voice=TTS_VOICE_ID),
+        tts=elevenlabs.TTS(
+            voice_id=TTS_VOICE_ID,
+            model=TTS_MODEL,
+            language="de",
+            voice_settings=elevenlabs.VoiceSettings(
+                stability=0.5,
+                similarity_boost=0.75,
+                style=0.0,
+                use_speaker_boost=False,
+                speed=1.1,
+            ),
+        ),
         turn_detection=MultilingualModel(),
         vad=ctx.proc.userdata["vad"],
         preemptive_generation=True,
+        min_endpointing_delay=0.5,
+        max_endpointing_delay=4.0,
+        allow_interruptions=True,
+        min_interruption_duration=0.4,
     )
 
     await session.start(
