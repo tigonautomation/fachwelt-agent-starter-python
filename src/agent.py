@@ -23,9 +23,7 @@ load_dotenv(".env.local")
 AGENT_MODEL = "openai/gpt-4.1"
 
 # Cartesia Sonic-3 multilingual — language="de" forces German prosody
-# Starter voice. Swap via cartesia.ai/playground for a German female voice (search "german female"
-# or "Lea" / "Sonja"). Copy the UUID and replace below.
-TTS_VOICE_ID = "9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"
+TTS_VOICE_ID = "b9de4a89-2257-424b-94c2-db18ba68c81a"
 
 FACHWELT_PROMPT = """# Fachwelt Marketplace — Vorqualifizierungs-Agent
 
