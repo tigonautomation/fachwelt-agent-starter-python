@@ -163,7 +163,7 @@ def prewarm(proc: JobProcess):
 server.setup_fnc = prewarm
 
 
-@server.rtc_session(agent_name="fachwelt-agent")
+@server.rtc_session()
 async def fachwelt_agent(ctx: JobContext):
     ctx.log_context_fields = {"room": ctx.room.name}
 
