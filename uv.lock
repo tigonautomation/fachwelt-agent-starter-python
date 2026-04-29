@@ -14,6 +14,7 @@ source = { editable = "." }
 dependencies = [
     { name = "livekit-agents", extra = ["silero", "turn-detector"] },
     { name = "livekit-plugins-ai-coustics" },
+    { name = "livekit-plugins-elevenlabs" },
     { name = "python-dotenv" },
 ]
 
@@ -28,6 +29,7 @@ dev = [
 requires-dist = [
     { name = "livekit-agents", extras = ["silero", "turn-detector"], specifier = "~=1.5" },
     { name = "livekit-plugins-ai-coustics", specifier = "~=0.2" },
+    { name = "livekit-plugins-elevenlabs", specifier = "~=1.5" },
     { name = "python-dotenv" },
 ]
 
@@ -1050,6 +1052,10 @@ wheels = [
 ]
 
 [package.optional-dependencies]
+codecs = [
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
 silero = [
     { name = "livekit-plugins-silero" },
 ]
@@ -1125,6 +1131,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/97/38/d59a07cbef649cb0548867cf49d58dd9400ae1f5cdfe8890c7a0987bb35f/livekit_plugins_ai_coustics-0.2.11-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:5811df9d96e17b324a7a42717c66a5ac58ca93e0739617ee93ce362187d7a604", size = 79802489, upload-time = "2026-04-24T15:41:21.803Z" },
     { url = "https://files.pythonhosted.org/packages/25/9f/f6598ec10798875ffe391a372864e917d122f5b908a0c14bee9828e741e9/livekit_plugins_ai_coustics-0.2.11-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:842e5cdcbe2721a13ff96dcae32ffd0e8ce50badac3810d5aeb63415a044aba1", size = 80126073, upload-time = "2026-04-24T15:41:26.991Z" },
     { url = "https://files.pythonhosted.org/packages/38/c4/b109d833db0862de6f984d4c032f05cc879d67bc41d8260615c53166eb67/livekit_plugins_ai_coustics-0.2.11-cp310-abi3-win_amd64.whl", hash = "sha256:0171f71ee88c6a1cc06d38b4d4d3844398f1ebee6330f363b3f3e5d7c760118d", size = 79530528, upload-time = "2026-04-24T15:41:31.052Z" },
+]
+
+[[package]]
+name = "livekit-plugins-elevenlabs"
+version = "1.5.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "livekit-agents", extra = ["codecs"] },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1d/2f/de721a3ee4724b57a36b2d870a5bc8c90d39ecec4f82cefe94c31c677d7e/livekit_plugins_elevenlabs-1.5.6.tar.gz", hash = "sha256:3191793f29aef3f0de41166e21411bf4d107efb2ae8bc2ef15e9a40fda877e2c", size = 17325, upload-time = "2026-04-22T20:21:58.273Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/98/a5/a634dc3d92ea74a90630bff2919e165dd2b25f5a050434532d872f20a81d/livekit_plugins_elevenlabs-1.5.6-py3-none-any.whl", hash = "sha256:44b3521fd53505e6dcf6c67a78a451b4075773060bdc9b528a1b6c253d9015fb", size = 19993, upload-time = "2026-04-22T20:21:56.945Z" },
 ]
 
 [[package]]

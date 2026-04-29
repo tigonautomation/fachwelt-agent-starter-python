@@ -13,7 +13,7 @@ from livekit.agents import (
     inference,
     room_io,
 )
-from livekit.plugins import ai_coustics, silero
+from livekit.plugins import ai_coustics, elevenlabs, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 logger = logging.getLogger("agent")
@@ -22,8 +22,22 @@ load_dotenv(".env.local")
 
 AGENT_MODEL = "openai/gpt-4.1"
 
-# Cartesia Sonic-3 multilingual — language="de" forces German prosody
-TTS_VOICE_ID = "b9de4a89-2257-424b-94c2-db18ba68c81a"
+# Phonio-style ElevenLabs config — eleven_turbo_v2_5 for sub-300ms TTFA
+ELEVENLABS_MODEL = "eleven_turbo_v2_5"
+
+# A/B voices — uncomment one. Leonie is the Phonio default.
+TTS_VOICE_ID = "uvysWDLbKpA4XvpD3GI6"  # Leonie (Phonio)
+# TTS_VOICE_ID = "zKHQdbB8oaQ7roNTiDTK"  # Voice 2
+# TTS_VOICE_ID = "sgKauqXbUxSBZgugAiOl"  # Voice 3
+
+# Reverse-engineered Phonio voice settings (vault research 2026-04-20)
+PHONIO_VOICE_SETTINGS = elevenlabs.VoiceSettings(
+    stability=0.5,
+    similarity_boost=0.75,
+    style=0.0,
+    use_speaker_boost=False,
+    speed=1.1,
+)
 
 FACHWELT_PROMPT = """# Fachwelt Marketplace — Vorqualifizierungs-Agent
 
@@ -169,9 +183,10 @@ async def fachwelt_agent(ctx: JobContext):
     session = AgentSession(
         stt=inference.STT(model="deepgram/nova-3", language="de"),
         llm=inference.LLM(model=AGENT_MODEL),
-        tts=inference.TTS(
-            model="cartesia/sonic-3",
-            voice=TTS_VOICE_ID,
+        tts=elevenlabs.TTS(
+            voice_id=TTS_VOICE_ID,
+            model=ELEVENLABS_MODEL,
+            voice_settings=PHONIO_VOICE_SETTINGS,
             language="de",
         ),
         turn_detection=MultilingualModel(),
