@@ -104,7 +104,7 @@ async def test_conversation_scenario(scenario: dict) -> None:
                 )
 
             assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
-            await assert_obj.judge(judge_llm, intent=_lenient(turn["expect_intent"]))
+            await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
 
         called = _function_call_names(all_events)
         if expected_tool is None:
