@@ -270,7 +270,7 @@ async def test_einwand_klingt_nach_spam() -> None:
 
 @pytest.mark.asyncio
 async def test_callback_requested() -> None:
-    """User will Rückruf. Lisa muss schedule_callback aufrufen."""
+    """User will Rückruf. Lisa muss schedule_callback aufrufen + freundlich exiten."""
     async with (
         _agent_llm() as agent_llm,
         _judge_llm() as judge_llm,
@@ -281,14 +281,19 @@ async def test_callback_requested() -> None:
             user_input="Rufen Sie mich morgen Nachmittag um drei wieder an, jetzt passt's gar nicht."
         )
 
+        # Erst: Function-Call schedule_callback mit when-Wert
+        result.expect.next_event().is_function_call(name="schedule_callback")
+        result.expect.next_event().is_function_call_output()
+
+        # Dann: kurzer freundlicher Verbal-Abschied
         await (
             result.expect.next_event()
             .is_message(role="assistant")
             .judge(
                 judge_llm,
                 intent="""
-                Die Antwort muss bestätigen, dass der Rückruf morgen Nachmittag
-                vorgemerkt wird. Kurz und freundlich.
+                Die Antwort muss kurz und freundlich bestätigen, dass der Rückruf
+                vorgemerkt ist, und einen Abschied einleiten.
 
                 NICHT erlaubt: weiter pitchen, weiter qualifizieren.
                 NICHT erlaubt: Termin in Frage stellen oder verhandeln.
@@ -303,7 +308,7 @@ async def test_callback_requested() -> None:
 
 @pytest.mark.asyncio
 async def test_kein_interesse_graceful_exit() -> None:
-    """User: kein Interesse. Lisa muss freundlich exiten, kein Pushing."""
+    """User: kein Interesse. Lisa muss mark_not_qualified + freundlich exiten."""
     async with (
         _agent_llm() as agent_llm,
         _judge_llm() as judge_llm,
@@ -312,6 +317,11 @@ async def test_kein_interesse_graceful_exit() -> None:
         await session.start(FachweltAssistant())
         result = await session.run(user_input="Kein Interesse, danke.")
 
+        # Tool-Call zuerst
+        result.expect.next_event().is_function_call(name="mark_not_qualified")
+        result.expect.next_event().is_function_call_output()
+
+        # Dann verbal exit
         await (
             result.expect.next_event()
             .is_message(role="assistant")
@@ -322,7 +332,7 @@ async def test_kein_interesse_graceful_exit() -> None:
                 Kein Push, kein "aber lassen Sie mich noch kurz...", kein
                 "darf ich Ihnen wenigstens..."
 
-                Maximal ~15 Wörter.
+                Maximal ~25 Wörter.
                 """,
             )
         )
