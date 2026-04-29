@@ -13,25 +13,26 @@ from pathlib import Path
 
 import pytest
 import yaml
-from livekit.agents import AgentSession, inference, llm
+from livekit.agents import AgentSession, llm
 from livekit.agents.voice.run_result import (
     ChatMessageAssert,
     ChatMessageEvent,
     FunctionCallEvent,
 )
+from livekit.plugins import openai
 
-from agent import AGENT_MODEL, FachweltAssistant
+from agent import FachweltAssistant
 
 SCENARIOS_FILE = Path(__file__).parent / "conversation_scenarios.yaml"
 SCENARIOS = yaml.safe_load(SCENARIOS_FILE.read_text(encoding="utf-8"))
 
 
 def _agent_llm() -> llm.LLM:
-    return inference.LLM(model=AGENT_MODEL)
+    return openai.LLM(model="gpt-4.1")
 
 
 def _judge_llm() -> llm.LLM:
-    return inference.LLM(model="openai/gpt-4.1-mini")
+    return openai.LLM(model="gpt-4.1-mini")
 
 
 def _last_assistant_message_index(events) -> int | None:

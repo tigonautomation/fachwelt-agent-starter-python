@@ -8,18 +8,18 @@ Run: `uv run pytest -v` (oder einzeln: `uv run pytest tests/test_agent.py::test_
 """
 
 import pytest
-from livekit.agents import AgentSession, inference, llm
+from livekit.agents import AgentSession, llm
+from livekit.plugins import openai
 
-from agent import AGENT_MODEL, FachweltAssistant
+from agent import FachweltAssistant
 
 
 def _agent_llm() -> llm.LLM:
-    return inference.LLM(model=AGENT_MODEL)
+    return openai.LLM(model="gpt-4.1")
 
 
 def _judge_llm() -> llm.LLM:
-    # Cheaper model — Judge bewertet nur, kein kreatives Schreiben
-    return inference.LLM(model="openai/gpt-4.1-mini")
+    return openai.LLM(model="gpt-4.1-mini")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
