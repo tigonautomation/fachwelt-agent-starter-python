@@ -1,0 +1,65 @@
+warning: `VIRTUAL_ENV=/Library/Frameworks/Python.framework/Versions/3.13` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+============================= test session starts ==============================
+platform darwin -- Python 3.11.14, pytest-9.0.3, pluggy-1.6.0 -- /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/edonmurati/projects/fachwelt/agent-starter-python
+configfile: pyproject.toml
+plugins: xdist-3.8.0, asyncio-1.3.0, anyio-4.13.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+created: 4/4 workers
+4 workers [28 items]
+
+scheduling tests via LoadScheduling
+
+tests/test_conversations.py::test_conversation_scenario[technikfeindlich_robogespraech] 
+tests/test_conversations.py::test_conversation_scenario[ueber_engagiert_alles_wissen] 
+tests/test_conversations.py::test_conversation_scenario[falsche_person_sekretaerin] 
+tests/test_conversations.py::test_conversation_scenario[rueckruf_unklarer_zeitpunkt] 
+[gw3] [  3%] FAILED tests/test_conversations.py::test_conversation_scenario[rueckruf_unklarer_zeitpunkt] 
+tests/test_conversations.py::test_conversation_scenario[sprach_code_switch_englisch] 
+[gw1] [  7%] FAILED tests/test_conversations.py::test_conversation_scenario[falsche_person_sekretaerin] 
+tests/test_conversations.py::test_conversation_scenario[aggressiv_frustriert_haeufen] 
+[gw3] [ 10%] FAILED tests/test_conversations.py::test_conversation_scenario[sprach_code_switch_englisch] 
+tests/test_conversations.py::test_conversation_scenario[hintergrundlaerm_schlechte_verbindung] 
+[gw2] [ 14%] FAILED tests/test_conversations.py::test_conversation_scenario[ueber_engagiert_alles_wissen] 
+tests/test_conversations.py::test_conversation_scenario[dsgvo_profi_ai_act] 
+[gw0] [ 17%] FAILED tests/test_conversations.py::test_conversation_scenario[technikfeindlich_robogespraech] 
+tests/test_conversations.py::test_conversation_scenario[eiliger_geschaeftsfuehrer_30_sekunden] 
+[gw1] [ 21%] FAILED tests/test_conversations.py::test_conversation_scenario[aggressiv_frustriert_haeufen] 
+tests/test_conversations.py::test_conversation_scenario[email_tippfehler_korrektur] 
+[gw3] [ 25%] FAILED tests/test_conversations.py::test_conversation_scenario[hintergrundlaerm_schlechte_verbindung] 
+tests/test_conversations.py::test_conversation_scenario[korrigiert_sich_mid_sentence] 
+[gw1] [ 28%] FAILED tests/test_conversations.py::test_conversation_scenario[email_tippfehler_korrektur] 
+tests/test_conversations.py::test_conversation_scenario[unmoeglich_100_leads_garantie] 
+[gw1] [ 32%] FAILED tests/test_conversations.py::test_conversation_scenario[unmoeglich_100_leads_garantie] 
+tests/test_conversations.py::test_conversation_scenario[privatperson_irrtuemlicherweise_gelistet] 
+[gw0] [ 35%] FAILED tests/test_conversations.py::test_conversation_scenario[eiliger_geschaeftsfuehrer_30_sekunden] 
+tests/test_conversations.py::test_conversation_scenario[konkurrenzvergleich_wer_liefert_was] 
+[gw3] [ 39%] FAILED tests/test_conversations.py::test_conversation_scenario[korrigiert_sich_mid_sentence] 
+tests/test_conversations.py::test_conversation_scenario[sofort_kaufen_zu_schnell] 
+[gw2] [ 42%] FAILED tests/test_conversations.py::test_conversation_scenario[dsgvo_profi_ai_act] 
+tests/test_conversations.py::test_conversation_scenario[bestandskunde_kennt_fachwelt] 
+[gw1] [ 46%] FAILED tests/test_conversations.py::test_conversation_scenario[privatperson_irrtuemlicherweise_gelistet] 
+tests/test_conversations.py::test_conversation_scenario[dialektaler_sueddeutscher] 
+[gw3] [ 50%] FAILED tests/test_conversations.py::test_conversation_scenario[sofort_kaufen_zu_schnell] 
+tests/test_conversations.py::test_conversation_scenario[stiller_einsilbiger_gesprachspartner] 
+[gw2] [ 53%] FAILED tests/test_conversations.py::test_conversation_scenario[bestandskunde_kennt_fachwelt] 
+tests/test_conversations.py::test_conversation_scenario[alles_per_post_kein_email] 
+[gw0] [ 57%] FAILED tests/test_conversations.py::test_conversation_scenario[konkurrenzvergleich_wer_liefert_was] 
+tests/test_conversations.py::test_conversation_scenario[bestandskunde_beschwerde] 
+[gw2] [ 60%] FAILED tests/test_conversations.py::test_conversation_scenario[alles_per_post_kein_email] 
+tests/test_conversations.py::test_conversation_scenario[konkurrenz_preis_vergleich] 
+[gw1] [ 64%] FAILED tests/test_conversations.py::test_conversation_scenario[dialektaler_sueddeutscher] 
+tests/test_conversations.py::test_conversation_scenario[fuenf_minuten_demo_wunsch] 
+[gw3] [ 67%] FAILED tests/test_conversations.py::test_conversation_scenario[stiller_einsilbiger_gesprachspartner] 
+tests/test_conversations.py::test_conversation_scenario[zehn_referenzen_forderung] 
+[gw0] [ 71%] FAILED tests/test_conversations.py::test_conversation_scenario[bestandskunde_beschwerde] 
+tests/test_conversations.py::test_conversation_scenario[hoeflich_aber_nein_klar] 
+[gw2] [ 75%] FAILED tests/test_conversations.py::test_conversation_scenario[konkurrenz_preis_vergleich] 
+tests/test_conversations.py::test_conversation_scenario[multi_einwand_kette] 
+[gw3] [ 78%] FAILED tests/test_conversations.py::test_conversation_scenario[zehn_referenzen_forderung] 
+tests/test_conversations.py::test_conversation_scenario[b2c_endkunden_online_shop] 
+[gw1] [ 82%] PASSED tests/test_conversations.py::test_conversation_scenario[fuenf_minuten_demo_wunsch] 
+tests/test_conversations.py::test_conversation_scenario[vertrag_sofort_abschliessen] 
+[gw0] [ 85%] FAILED tests/test_conversations.py::test_conversation_scenario[hoeflich_aber_nein_klar] 
+tests/test_conversations.py::test_conversation_scenario[rueckruf_konkreter_zeitpunkt] 

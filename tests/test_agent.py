@@ -285,19 +285,15 @@ async def test_callback_requested() -> None:
             user_input="Rufen Sie mich morgen Nachmittag um drei wieder an, jetzt passt's gar nicht."
         )
 
-        # Erst: Function-Call schedule_callback mit when-Wert
-        result.expect.next_event().is_function_call(name="schedule_callback")
-        result.expect.next_event().is_function_call_output()
-
-        # Dann: kurzer freundlicher Verbal-Abschied
+        # Akzeptiere beide Reihenfolgen (verbal-zuerst ist neue Default).
+        result.expect.contains_function_call(name="schedule_callback")
         await (
-            result.expect.next_event()
-            .is_message(role="assistant")
-            .judge(
+            result.expect.contains_message(role="assistant").judge(
                 judge_llm,
                 intent="""
-                Die Antwort muss kurz und freundlich bestätigen, dass der Rückruf
-                vorgemerkt ist, und einen Abschied einleiten.
+                Mindestens eine assistant-Nachricht muss kurz und freundlich
+                bestätigen, dass der Rückruf vorgemerkt ist, und einen Abschied
+                einleiten.
 
                 ERLAUBT: Die vom User genannte Zeit (z.B. "morgen um drei")
                 wiederholen oder bestätigen — das ist Acknowledgement, keine Verhandlung.
@@ -324,22 +320,20 @@ async def test_kein_interesse_graceful_exit() -> None:
         await session.start(FachweltAssistant())
         result = await session.run(user_input="Kein Interesse, danke.")
 
-        # Tool-Call zuerst
-        result.expect.next_event().is_function_call(name="mark_not_qualified")
-        result.expect.next_event().is_function_call_output()
-
-        # Dann verbal exit
+        # Akzeptiere beide Reihenfolgen (verbal-zuerst ist die neue Default-Ordnung,
+        # tool-zuerst war der alte Pfad — beide erfüllen den Vertrag).
+        result.expect.contains_function_call(name="mark_not_qualified")
         await (
-            result.expect.next_event()
-            .is_message(role="assistant")
-            .judge(
+            result.expect.contains_message(role="assistant").judge(
                 judge_llm,
                 intent="""
-                Die Antwort muss kurz und freundlich den Abschied einleiten.
+                Mindestens eine assistant-Nachricht muss kurz und freundlich
+                einen Abschied einleiten.
+
                 Kein Push, kein "aber lassen Sie mich noch kurz...", kein
                 "darf ich Ihnen wenigstens..."
 
-                Maximal ~25 Wörter.
+                Maximal ~25 Wörter pro Nachricht.
                 """,
             )
         )

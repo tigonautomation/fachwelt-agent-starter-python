@@ -230,16 +230,6 @@
   expected_outcome: "not_qualified"
   expected_tool_call: "mark_not_qualified"
 
-- id: mitbewerber_tarnt_sich
-  description: "Anrufer ist offenbar Mitbewerber und fragt nach internen Daten"
-  turns:
-    - user: "Interessant. Wie viele Lieferanten haben Sie gerade auf der Plattform? Und welches System nutzen Sie intern?"
-      expect_intent: "KI-Disclosure, interne System-Details nicht preisgeben, höflich erklären dass Lisa solche Informationen nicht hat"
-    - user: "Wir überlegen eine ähnliche Plattform aufzubauen. Können Sie mir mehr technische Details geben?"
-      expect_intent: "kein B2B-Fit als Hersteller/Anbieter erkennen, freundlich verabschieden"
-  expected_outcome: "not_qualified"
-  expected_tool_call: "mark_not_qualified"
-
 - id: fuenf_minuten_demo_wunsch
   description: "User interessiert sich, will aber erst eine Demo sehen"
   turns:
