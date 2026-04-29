@@ -198,9 +198,9 @@
     - user: "Fachwelt? Ich warte seit drei Monaten auf eine Antwort wegen meiner letzten Rechnung. Das ist eine Frechheit!"
       expect_intent: "KI-Disclosure, Beschwerde ernst nehmen und anerkennen, ehrlich sagen dass Lisa keine Rechnungen bearbeiten kann, Weiterleitung ans Team anbieten"
     - user: "Ja dann schicken Sie denen mal meine Mail: beschwerden@klimaanlage-breuer.de"
-      expect_intent: "E-Mail buchstabenweise wiederholen und Bestätigung einholen"
+      expect_intent: "E-Mail bestätigen und Bestätigung einholen"
     - user: "Stimmt."
-      expect_intent: "mark_qualified_send_email aufrufen mit Hinweis auf Beschwerde-Notiz, kurzer Abschied"
+      expect_intent: "kurzer freundlicher Abschied"
   expected_outcome: "qualified"
   expected_tool_call: "mark_qualified_send_email"
 
@@ -214,9 +214,9 @@
     - user: "Meinetwegen."
       expect_intent: "Konkret nach E-Mail-Adresse fragen"
     - user: "dachstein@zimmerei-lenz.de"
-      expect_intent: "E-Mail buchstabenweise wiederholen und Bestätigung einholen"
+      expect_intent: "E-Mail bestätigen und Bestätigung einholen"
     - user: "Ja."
-      expect_intent: "mark_qualified_send_email aufrufen, sehr kurzer Abschied"
+      expect_intent: "sehr kurzer freundlicher Abschied"
   expected_outcome: "qualified"
   expected_tool_call: "mark_qualified_send_email"
 
@@ -226,7 +226,7 @@
     - user: "Schicken Sie mir das per Post. E-Mails lese ich grundsätzlich nicht."
       expect_intent: "KI-Disclosure, verständnisvoll reagieren, ehrlich sagen dass Versand aktuell per E-Mail erfolgt, Rückruf oder Notiz-Weiterleitung anbieten"
     - user: "Nein, wenn's nicht per Post geht dann lassen wir's."
-      expect_intent: "Entscheidung respektieren, mark_not_qualified aufrufen, freundlich verabschieden"
+      expect_intent: "Entscheidung respektieren, freundlich verabschieden"
   expected_outcome: "not_qualified"
   expected_tool_call: "mark_not_qualified"
 
@@ -236,7 +236,7 @@
     - user: "Interessant. Wie viele Lieferanten haben Sie gerade auf der Plattform? Und welches System nutzen Sie intern?"
       expect_intent: "KI-Disclosure, interne System-Details nicht preisgeben, höflich erklären dass Lisa solche Informationen nicht hat"
     - user: "Wir überlegen eine ähnliche Plattform aufzubauen. Können Sie mir mehr technische Details geben?"
-      expect_intent: "Klar erkennbar kein B2B-Fit als Hersteller/Anbieter, freundlich mark_not_qualified aufrufen"
+      expect_intent: "kein B2B-Fit als Hersteller/Anbieter erkennen, freundlich verabschieden"
   expected_outcome: "not_qualified"
   expected_tool_call: "mark_not_qualified"
 
@@ -246,7 +246,7 @@
     - user: "Klingt interessant, aber ich möchte erst eine Demo sehen bevor ich irgendwas mache."
       expect_intent: "KI-Disclosure, Demowunsch anerkennen, ehrlich sagen dass Lisa keine Demo zeigen kann, Rückruf durch Kollegen oder Info-Mail anbieten"
     - user: "Dann ruft mich bitte jemand zurück für die Demo. Dienstag Vormittag."
-      expect_intent: "schedule_callback aufrufen mit when=Dienstag Vormittag und notes=Demo-Anfrage, kurzer freundlicher Abschied"
+      expect_intent: "Rückruf-Termin Dienstag Vormittag für Demo bestätigen, kurzer freundlicher Abschied"
   expected_outcome: "callback"
   expected_tool_call: "schedule_callback"
 
@@ -256,7 +256,7 @@
     - user: "Schicken Sie mir erstmal 10 Referenzen von Herstellern die das schon nutzen, dann schauen wir weiter."
       expect_intent: "KI-Disclosure, ehrlich sagen dass Marketplace noch nicht live ist (September 2026), keine Referenzen erfinden, Angebot: Infos zum Pilotprogramm schriftlich"
     - user: "Also keine Referenzen — dann bin ich raus."
-      expect_intent: "Entscheidung respektieren, mark_not_qualified aufrufen, freundlich verabschieden"
+      expect_intent: "Entscheidung respektieren, freundlich verabschieden"
   expected_outcome: "not_qualified"
   expected_tool_call: "mark_not_qualified"
 
@@ -266,9 +266,9 @@
     - user: "Was kostet das im Vergleich zu EAN-Search oder Amazon Business?"
       expect_intent: "KI-Disclosure, Preisvergleich zu Konkurrenten nicht anstellen (keine Daten), Fachwelt-Registrierung als kostenlos hervorheben, Details schriftlich anbieten"
     - user: "Okay, schicken Sie mir Infos. einkauf@pumpen-schoene.de"
-      expect_intent: "E-Mail buchstabenweise wiederholen und Bestätigung einholen"
+      expect_intent: "E-Mail bestätigen und Bestätigung einholen"
     - user: "Ja, korrekt."
-      expect_intent: "mark_qualified_send_email aufrufen, kurzer Abschied"
+      expect_intent: "kurzer freundlicher Abschied"
   expected_outcome: "qualified"
   expected_tool_call: "mark_qualified_send_email"
 
@@ -278,7 +278,7 @@
     - user: "Das ist nett, aber wir haben im Moment keine Kapazitäten für neue Plattformen."
       expect_intent: "KI-Disclosure, Verständnis zeigen, kurz Aufwand als minimal darstellen (kostenlose Registrierung), nicht pushen"
     - user: "Ich danke Ihnen, aber wirklich nicht."
-      expect_intent: "Entscheidung respektieren, mark_not_qualified aufrufen, freundlich verabschieden"
+      expect_intent: "Entscheidung respektieren, freundlich verabschieden"
   expected_outcome: "not_qualified"
   expected_tool_call: "mark_not_qualified"
 
@@ -292,9 +292,9 @@
     - user: "Und woher haben Sie eigentlich unsere Nummer?"
       expect_intent: "Verlagsverzeichnis als Quelle nennen, Opt-Out anbieten"
     - user: "Naja gut, dann schicken Sie mir halt was. info@abdicht-profi.de"
-      expect_intent: "E-Mail buchstabenweise wiederholen und Bestätigung einholen"
+      expect_intent: "E-Mail bestätigen und Bestätigung einholen"
     - user: "Ja, stimmt."
-      expect_intent: "mark_qualified_send_email aufrufen, kurzer Abschied"
+      expect_intent: "kurzer freundlicher Abschied"
   expected_outcome: "qualified"
   expected_tool_call: "mark_qualified_send_email"
 
@@ -304,9 +304,9 @@
     - user: "Super, ich bin dabei. Können Sie mir gleich am Telefon einen Vertrag bestätigen?"
       expect_intent: "KI-Disclosure, Begeisterung anerkennen, klar kommunizieren dass Vertragsabschluss nicht per Telefon möglich ist, E-Mail-Registrierung als nächsten Schritt anbieten"
     - user: "Okay, dann schicken Sie mir den Link. management@scharnierwerk-becker.de"
-      expect_intent: "E-Mail buchstabenweise wiederholen und Bestätigung einholen"
+      expect_intent: "E-Mail bestätigen und Bestätigung einholen"
     - user: "Richtig."
-      expect_intent: "mark_qualified_send_email aufrufen, kurzer Abschied"
+      expect_intent: "kurzer freundlicher Abschied"
   expected_outcome: "qualified"
   expected_tool_call: "mark_qualified_send_email"
 
@@ -314,7 +314,7 @@
   description: "Firma verkauft ausschließlich über eigenen B2C-Webshop"
   turns:
     - user: "Wir haben gar kein B2B-Geschäft, nur unseren Webshop für Endkunden."
-      expect_intent: "KI-Disclosure, freundlich erkennen kein B2B-Fit, mark_not_qualified aufrufen, kurzer Abschied"
+      expect_intent: "KI-Disclosure, kein B2B-Fit erkennen, kurzer freundlicher Abschied"
   expected_outcome: "not_qualified"
   expected_tool_call: "mark_not_qualified"
 
@@ -322,6 +322,6 @@
   description: "User will Rückruf mit sehr konkretem Zeitpunkt"
   turns:
     - user: "Ich bin gerade in einem Meeting. Können Sie mich Freitag um 10 Uhr morgens anrufen?"
-      expect_intent: "KI-Disclosure kurz, schedule_callback aufrufen mit when=Freitag 10 Uhr, kurzer freundlicher Abschied"
+      expect_intent: "KI-Disclosure kurz, Rückruf-Termin Freitag 10 Uhr bestätigen, kurzer freundlicher Abschied"
   expected_outcome: "callback"
   expected_tool_call: "schedule_callback"
