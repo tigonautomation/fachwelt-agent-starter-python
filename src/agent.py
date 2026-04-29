@@ -39,6 +39,17 @@ PHONIO_VOICE_SETTINGS = elevenlabs.VoiceSettings(
     speed=1.1,
 )
 
+# Pronunciation dictionary for German + English loanwords (Marketplace, B2B, KI, URL, fachwelt.de)
+FACHWELT_PRONUNCIATION_DICT = [
+    elevenlabs.PronunciationDictionaryLocator(
+        pronunciation_dictionary_id="IW2jbKiFNq8Nz0X4kscp",
+        version_id="4DMpzFxwGeOmuu6q7Knl",
+    )
+]
+
+# First chunk smaller for faster TTFA, rest default for quality
+PHONIO_CHUNK_SCHEDULE = [80, 160, 250, 290]
+
 FACHWELT_PROMPT = """# Fachwelt Marketplace — Vorqualifizierungs-Agent
 
 ## Identität & Ziel
@@ -188,6 +199,8 @@ async def fachwelt_agent(ctx: JobContext):
             model=ELEVENLABS_MODEL,
             voice_settings=PHONIO_VOICE_SETTINGS,
             language="de",
+            chunk_length_schedule=PHONIO_CHUNK_SCHEDULE,
+            pronunciation_dictionary_locators=FACHWELT_PRONUNCIATION_DICT,
         ),
         turn_detection=MultilingualModel(),
         vad=ctx.proc.userdata["vad"],
