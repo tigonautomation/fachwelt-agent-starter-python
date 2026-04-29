@@ -25,10 +25,14 @@ AGENT_MODEL = "openai/gpt-4.1"
 # Quality over latency — multilingual_v2 hat deutlich natürlichere DE-Prosodie als turbo
 ELEVENLABS_MODEL = "eleven_multilingual_v2"
 
-# A/B voices — uncomment one. Leonie is the Phonio default.
-TTS_VOICE_ID = "uvysWDLbKpA4XvpD3GI6"  # Leonie (Phonio)
-# TTS_VOICE_ID = "zKHQdbB8oaQ7roNTiDTK"  # Voice 2
-# TTS_VOICE_ID = "sgKauqXbUxSBZgugAiOl"  # Voice 3
+# Voice-Library Recherche (Fonio.ai nutzt ElevenLabs DE-Voices wie Katja, Julia, Theres)
+# Johanna ist explizit als "Sales Outreach Specialist" gelabelt — exakt unser Use-Case
+TTS_VOICE_ID = "HHKcxM1mAt4nEB2ZjrRw"  # Johanna - Sales Outreach Specialist (DE, conversational, confident)
+# TTS_VOICE_ID = "cllvQaMvj0ZKxH88HGEn"  # Gesa Tess - Trustworthy Host (conversational, pleasant)
+# TTS_VOICE_ID = "MGG5Irb57ATHvyIeTEYo"  # Maya - Supportive Agent (conversational, confident)
+# TTS_VOICE_ID = "0o46iPcQNHBZFpnxxQz5"  # Marion Mitte - Friendly, Warm & Fresh
+# TTS_VOICE_ID = "uvysWDLbKpA4XvpD3GI6"  # Leonie (alt)
+# TTS_VOICE_ID = "sgKauqXbUxSBZgugAiOl"  # Sina - middle-aged, casual
 
 # Reverse-engineered Phonio voice settings (vault research 2026-04-20)
 PHONIO_VOICE_SETTINGS = elevenlabs.VoiceSettings(
