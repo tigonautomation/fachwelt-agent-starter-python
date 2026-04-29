@@ -1,25 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<!--
-  PLS-Alias Proposal Iter 5 — Voice-Scout-Refinements für Susi (v3V1d2rk6528UrLKRuy8)
-
-  Changes vs. current dict (IW2jbKiFNq8Nz0X4kscp / 4DMpzFxwGeOmuu6q7Knl):
-  1. xml:lang: en-US → de-DE  (matches actual TTS language)
-  2. B2B: "be zu be" → "Be-zu-Be"  (hyphens force 3-syllable separation; Susi says "B zu B" without)
-  3. KI: "ka i" → "Ka-Ih"  (Susi says "KAI" as one syllable; hyphen + "h" forces 2-syllable Ka·Ih)
-  4. fachwelt.de: "fachwelt punkt de" → "fachwelt-punkt-de"  (prevents word-mushing into "Fachweltpunkte")
-  5. fachweltmarketplace.de: same hyphen pattern
-  6. Lower-case duplicates dropped (PLS matching is case-aware via separate lexemes; ElevenLabs handles both via the alias)
-
-  Kept unchanged: Marketplace/marketplace aliases (working).
-
-  USER-DECISION-GATE: kein Auto-Push. Edon entscheidet, ich pushe danach + update version_id in src/agent.py:51.
--->
-<lexicon version="1.0"
-         xmlns="http://www.w3.org/2005/01/pronunciation-lexicon"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://www.w3.org/2005/01/pronunciation-lexicon http://www.w3.org/TR/2007/CR-pronunciation-lexicon-20071212/pls.xsd"
-         alphabet="ipa"
-         xml:lang="de-DE">
+<lexicon version="1.0" xmlns="http://www.w3.org/2005/01/pronunciation-lexicon" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.w3.org/2005/01/pronunciation-lexicon http://www.w3.org/TR/2007/CR-pronunciation-lexicon-20071212/pls.xsd" alphabet="ipa" xml:lang="en-US">
   <lexeme>
     <grapheme>Marketplace</grapheme>
     <alias>Maakitpleis</alias>

@@ -47,8 +47,8 @@ PHONIO_VOICE_SETTINGS = elevenlabs.VoiceSettings(
 # Pronunciation dictionary for German + English loanwords (Marketplace, B2B, KI, URL, fachwelt.de)
 FACHWELT_PRONUNCIATION_DICT = [
     elevenlabs.PronunciationDictionaryLocator(
-        pronunciation_dictionary_id="IW2jbKiFNq8Nz0X4kscp",
-        version_id="4DMpzFxwGeOmuu6q7Knl",
+        pronunciation_dictionary_id="0o1LBeebsgd55OeNqno8",
+        version_id="911wJfN4YWGPhIuW9zvS",
     )
 ]
 
