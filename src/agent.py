@@ -27,20 +27,21 @@ ELEVENLABS_MODEL = "eleven_multilingual_v2"
 
 # Voice-Library Recherche (Fonio.ai nutzt ElevenLabs DE-Voices wie Katja, Julia, Theres)
 # Johanna ist explizit als "Sales Outreach Specialist" gelabelt — exakt unser Use-Case
-TTS_VOICE_ID = "HHKcxM1mAt4nEB2ZjrRw"  # Johanna - Sales Outreach Specialist (DE, conversational, confident)
+TTS_VOICE_ID = "v3V1d2rk6528UrLKRuy8"  # Susi - Effortless and Confident (DE, conversational, Voice-Scout 2026-04-29 Pick)
+# TTS_VOICE_ID = "HHKcxM1mAt4nEB2ZjrRw"  # Johanna - Sales Outreach Specialist (alt, Iter 1-4)
 # TTS_VOICE_ID = "cllvQaMvj0ZKxH88HGEn"  # Gesa Tess - Trustworthy Host (conversational, pleasant)
 # TTS_VOICE_ID = "MGG5Irb57ATHvyIeTEYo"  # Maya - Supportive Agent (conversational, confident)
 # TTS_VOICE_ID = "0o46iPcQNHBZFpnxxQz5"  # Marion Mitte - Friendly, Warm & Fresh
 # TTS_VOICE_ID = "uvysWDLbKpA4XvpD3GI6"  # Leonie (alt)
 # TTS_VOICE_ID = "sgKauqXbUxSBZgugAiOl"  # Sina - middle-aged, casual
 
-# Reverse-engineered Phonio voice settings (vault research 2026-04-20)
+# Voice-Scout 2026-04-29 Setting B (slower/more deliberate) — Susi tied at 95.6% Levenshtein, won ear-test
 PHONIO_VOICE_SETTINGS = elevenlabs.VoiceSettings(
-    stability=0.45,
+    stability=0.55,
     similarity_boost=0.80,
     style=0.15,
     use_speaker_boost=True,
-    speed=1.0,
+    speed=0.95,
 )
 
 # Pronunciation dictionary for German + English loanwords (Marketplace, B2B, KI, URL, fachwelt.de)

@@ -299,8 +299,11 @@ async def test_callback_requested() -> None:
                 Die Antwort muss kurz und freundlich bestätigen, dass der Rückruf
                 vorgemerkt ist, und einen Abschied einleiten.
 
+                ERLAUBT: Die vom User genannte Zeit (z.B. "morgen um drei")
+                wiederholen oder bestätigen — das ist Acknowledgement, keine Verhandlung.
+
                 NICHT erlaubt: weiter pitchen, weiter qualifizieren.
-                NICHT erlaubt: Termin in Frage stellen oder verhandeln.
+                NICHT erlaubt: Termin in Frage stellen oder einen anderen Termin vorschlagen.
                 """,
             )
         )
