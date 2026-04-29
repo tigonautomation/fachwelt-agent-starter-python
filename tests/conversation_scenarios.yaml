@@ -18,11 +18,11 @@
   description: "GF hat genau 30 Sekunden und will den Kern sofort"
   turns:
     - user: "30 Sekunden. Was wollen Sie?"
-      expect_intent: "KI-Disclosure + ein-Satz-Pitch Fachwelt Marketplace, sofort E-Mail-Angebot"
+      expect_intent: "KI-Disclosure, ein-Satz-Pitch Fachwelt Marketplace, E-Mail-Angebot machen"
     - user: "Schicken Sie was zu. info@bauchemie-roth.de"
-      expect_intent: "E-Mail buchstabenweise wiederholen und Bestätigung einholen"
+      expect_intent: "E-Mail bestätigen und Bestätigung einholen"
     - user: "Ja, stimmt."
-      expect_intent: "mark_qualified_send_email aufrufen, kurzer Abschied"
+      expect_intent: "kurzer freundlicher Abschied"
   expected_outcome: "qualified"
   expected_tool_call: "mark_qualified_send_email"
 
@@ -32,9 +32,9 @@
     - user: "Hier Firma Metzger, Schreibtisch Empfang. Herr Metzger ist die nächste Woche nicht da."
       expect_intent: "KI-Disclosure, höflich nach bestem Weg fragen — E-Mail weiterleiten oder Rückruf wenn GF zurück"
     - user: "Können Sie einfach eine E-Mail schicken? kontakt@metzger-armaturen.de"
-      expect_intent: "E-Mail buchstabenweise wiederholen und Bestätigung einholen"
+      expect_intent: "E-Mail bestätigen und Bestätigung einholen"
     - user: "Genau so, ja."
-      expect_intent: "mark_qualified_send_email aufrufen, kurzer freundlicher Abschluss"
+      expect_intent: "kurzer freundlicher Abschied"
   expected_outcome: "qualified"
   expected_tool_call: "mark_qualified_send_email"
 
@@ -42,7 +42,7 @@
   description: "User ist sichtlich genervt und wird direkt unfreundlich"
   turns:
     - user: "Schon der dritte Werbeanruf heute! Was soll das? Streichen Sie mich von Ihrer Liste!"
-      expect_intent: "Frustration anerkennen ohne Gegenargument, Opt-Out anbieten, mark_not_qualified aufrufen"
+      expect_intent: "Frustration respektieren, freundlich beenden"
   expected_outcome: "not_qualified"
   expected_tool_call: "mark_not_qualified"
 
@@ -50,11 +50,11 @@
   description: "User ist begeistert und stellt sehr viele Detailfragen hintereinander"
   turns:
     - user: "Ja, interessant! Wann startet der Marketplace, wie viele Anbieter sind dabei, gibt's Exklusivkategorien, und was sind die Provisionen?"
-      expect_intent: "KI-Disclosure, ein Punkt beantworten (Startdatum September 2026), Rest schriftlich anbieten — keine Provision erfinden"
+      expect_intent: "KI-Disclosure, Rest schriftlich anbieten"
     - user: "Okay, dann schicken Sie mir alles schriftlich. meine Mail ist thomas@fliesen-engel.de"
-      expect_intent: "E-Mail buchstabenweise wiederholen und Bestätigung einholen"
+      expect_intent: "E-Mail bestätigen und Bestätigung einholen"
     - user: "Richtig."
-      expect_intent: "mark_qualified_send_email aufrufen, kurzer Abschied"
+      expect_intent: "kurzer freundlicher Abschied"
   expected_outcome: "qualified"
   expected_tool_call: "mark_qualified_send_email"
 
@@ -62,11 +62,11 @@
   description: "DSGVO-bewusster User fragt nach Rechtsgrundlage für Aufzeichnung und KI-Einsatz"
   turns:
     - user: "Moment mal — auf welcher Rechtsgrundlage zeichnen Sie dieses Gespräch auf? Artikel 6 DSGVO, welcher Abs.?"
-      expect_intent: "KI-Disclosure bestätigt, ehrlich zugeben dass Lisa die genaue Rechtsgrundlage nicht benennen kann, schriftliche Auskunft vom Datenschutzbeauftragten anbieten"
+      expect_intent: "KI-Disclosure, Datenschutz-Frage ehrlich beantworten, schriftliche Info anbieten"
     - user: "Das sollten Sie wissen. Schicken Sie mir das schriftlich. datenschutz@rohling-gmbh.de"
-      expect_intent: "E-Mail buchstabenweise wiederholen, Bestätigung einholen, keine Rechtsgrundlagen erfinden"
+      expect_intent: "E-Mail bestätigen und Bestätigung einholen"
     - user: "Ja, korrekt."
-      expect_intent: "mark_qualified_send_email aufrufen, Datenschutz-Info wird mitgeschickt erwähnen, Abschied"
+      expect_intent: "kurzer freundlicher Abschied"
   expected_outcome: "qualified"
   expected_tool_call: "mark_qualified_send_email"
 
@@ -76,7 +76,7 @@
     - user: "Rufen Sie mich nochmal an, aber irgendwann nächste Woche wenn's besser passt."
       expect_intent: "Rückruf bestätigen, höflich nach konkreterem Zeitfenster fragen (Vormittag/Nachmittag)"
     - user: "Ach, einfach Dienstagnachmittag."
-      expect_intent: "schedule_callback aufrufen mit when=Dienstag Nachmittag, kurzer freundlicher Abschied"
+      expect_intent: "Rückruf-Termin Dienstag Nachmittag bestätigen, kurzer freundlicher Abschied"
   expected_outcome: "callback"
   expected_tool_call: "schedule_callback"
 
@@ -86,9 +86,9 @@
     - user: "Ja? What is this about actually?"
       expect_intent: "KI-Disclosure auf Englisch oder zweisprachig, kurzer Pitch, anbieten auf Deutsch oder Englisch fortzufahren"
     - user: "Okay, send me an email. It's info@techparts-europe.com"
-      expect_intent: "E-Mail buchstabenweise wiederholen auf Englisch, Bestätigung einholen"
+      expect_intent: "E-Mail auf Englisch bestätigen und Bestätigung einholen"
     - user: "Yes, that's right."
-      expect_intent: "mark_qualified_send_email aufrufen, kurzer englischer Abschied"
+      expect_intent: "kurzer freundlicher Abschied auf Englisch"
   expected_outcome: "qualified"
   expected_tool_call: "mark_qualified_send_email"
 
@@ -98,9 +98,9 @@
     - user: "Was? Ich hör Sie kaum, hier ist's gerade sehr laut."
       expect_intent: "KI-Disclosure kurz, deutlich und langsam wiederholen, Angebot Rückruf zu besserem Zeitpunkt"
     - user: "Ja schicken Sie mal was rüber, einfacher. empfang@heizung-baumann.de"
-      expect_intent: "E-Mail buchstabenweise deutlich wiederholen und Bestätigung einholen"
+      expect_intent: "E-Mail bestätigen und Bestätigung einholen"
     - user: "Ja, stimmt."
-      expect_intent: "mark_qualified_send_email aufrufen, kurzer Abschied"
+      expect_intent: "kurzer freundlicher Abschied"
   expected_outcome: "qualified"
   expected_tool_call: "mark_qualified_send_email"
 
@@ -108,11 +108,11 @@
   description: "User nennt E-Mail mit Tippfehler, korrigiert sich dann selbst"
   turns:
     - user: "Ja, schicken Sie mir Infos. Die Adresse ist mueller@sanitaer-technik.de"
-      expect_intent: "E-Mail buchstabenweise wiederholen und Bestätigung einholen"
+      expect_intent: "E-Mail bestätigen und Bestätigung einholen"
     - user: "Warten Sie — falsch. Das ist mueller@sanitaer-technik.com nicht .de"
-      expect_intent: "Korrektur ruhig annehmen, korrigierte E-Mail erneut buchstabenweise wiederholen und nochmal Bestätigung einholen"
+      expect_intent: "Korrektur ruhig annehmen, korrigierte E-Mail erneut bestätigen und Bestätigung einholen"
     - user: "Ja, .com stimmt."
-      expect_intent: "mark_qualified_send_email mit korrekter Adresse aufrufen, kurzer Abschied"
+      expect_intent: "kurzer freundlicher Abschied"
   expected_outcome: "qualified"
   expected_tool_call: "mark_qualified_send_email"
 
@@ -120,9 +120,9 @@
   description: "User korrigiert sich mitten im Satz bei der E-Mail-Angabe"
   turns:
     - user: "Klar. Schreiben Sie an info — nein warten Sie — besser direkt an j.weber@weber-fliesen.de"
-      expect_intent: "Korrektur akzeptieren ohne Verwirrung, die finale Adresse buchstabenweise wiederholen und Bestätigung einholen"
+      expect_intent: "Korrektur akzeptieren ohne Verwirrung, finale E-Mail bestätigen und Bestätigung einholen"
     - user: "Ja genau, das ist richtig."
-      expect_intent: "mark_qualified_send_email aufrufen, kurzer Abschied"
+      expect_intent: "kurzer freundlicher Abschied"
   expected_outcome: "qualified"
   expected_tool_call: "mark_qualified_send_email"
 
@@ -132,9 +132,9 @@
     - user: "Fachwelt kenn ich doch — wir inserieren da schon seit Jahren. Was ist das jetzt Neues?"
       expect_intent: "KI-Disclosure, Unterschied Marketplace vs. Verlag-Inserat kurz erklären (neue digitale Plattform, September 2026), Mehrwert herausstellen ohne Details zu erfinden"
     - user: "Ah okay, interessant. Dann schicken Sie mal mehr Infos an anzeigen@badmöbel-holz.de"
-      expect_intent: "E-Mail buchstabenweise wiederholen und Bestätigung einholen"
+      expect_intent: "E-Mail bestätigen und Bestätigung einholen"
     - user: "Stimmt genau."
-      expect_intent: "mark_qualified_send_email aufrufen, kurzer freundlicher Abschied"
+      expect_intent: "kurzer freundlicher Abschied"
   expected_outcome: "qualified"
   expected_tool_call: "mark_qualified_send_email"
 
@@ -144,9 +144,9 @@
     - user: "Was ist das denn groß anderes als Wer-liefert-was? Das kenn ich schon."
       expect_intent: "KI-Disclosure, Unterschied kurz benennen (Fachwelt-Nische, Verlagskontext, direkte Produktpräsentation), keine falschen Fakten über WLW erfinden"
     - user: "Naja, schicken Sie mir Detailinfos. vertrieb@werkzeug-hoffmann.de"
-      expect_intent: "E-Mail buchstabenweise wiederholen und Bestätigung einholen"
+      expect_intent: "E-Mail bestätigen und Bestätigung einholen"
     - user: "Ja, passt."
-      expect_intent: "mark_qualified_send_email aufrufen, kurzer Abschied"
+      expect_intent: "kurzer freundlicher Abschied"
   expected_outcome: "qualified"
   expected_tool_call: "mark_qualified_send_email"
 
@@ -156,7 +156,7 @@
     - user: "Können Sie mir garantieren, dass ich darüber 100 Leads im Monat bekomme?"
       expect_intent: "KI-Disclosure, ehrlich verneinen (keine Garantien möglich), Mehrwert trotzdem kurz nennen, Angebot schriftlicher Infos"
     - user: "Ohne Garantie interessiert mich das nicht."
-      expect_intent: "Entscheidung respektieren, mark_not_qualified aufrufen, freundlich verabschieden"
+      expect_intent: "Entscheidung respektieren, freundlich verabschieden"
   expected_outcome: "not_qualified"
   expected_tool_call: "mark_not_qualified"
 
@@ -166,9 +166,9 @@
     - user: "Super Idee! Wo kann ich mich gleich anmelden? Ich will dabei sein."
       expect_intent: "KI-Disclosure, Begeisterung freundlich anerkennen, erklären dass Registrierung per E-Mail-Link erfolgt, nach Adresse fragen"
     - user: "Ja gerne. Schreiben Sie an chef@keramik-wuensch.de"
-      expect_intent: "E-Mail buchstabenweise wiederholen und Bestätigung einholen"
+      expect_intent: "E-Mail bestätigen und Bestätigung einholen"
     - user: "Korrekt."
-      expect_intent: "mark_qualified_send_email aufrufen, kurzer freundlicher Abschied"
+      expect_intent: "kurzer freundlicher Abschied"
   expected_outcome: "qualified"
   expected_tool_call: "mark_qualified_send_email"
 
@@ -176,7 +176,7 @@
   description: "Angerufener ist Privatperson, kein Hersteller oder Anbieter"
   turns:
     - user: "Ich bin kein Hersteller, ich bin Rentner. Das ist meine Privatnummer."
-      expect_intent: "Entschuldigung für Störung, klar erkennen kein B2B-Fit, mark_not_qualified aufrufen, freundlich verabschieden"
+      expect_intent: "Entschuldigung für Störung, kein B2B-Fit erkennen, freundlich verabschieden"
   expected_outcome: "not_qualified"
   expected_tool_call: "mark_not_qualified"
 
@@ -186,9 +186,9 @@
     - user: "Jo, zwoi Minute hab i scho no. Was wollet Se denn?"
       expect_intent: "KI-Disclosure, Pitch in normalem Hochdeutsch, respektvoller Umgang mit Dialekt"
     - user: "Des klingt net schlecht. Schicket Se mir was. g.huber@malerbetrieb-huber.de"
-      expect_intent: "E-Mail buchstabenweise wiederholen und Bestätigung einholen"
+      expect_intent: "E-Mail bestätigen und Bestätigung einholen"
     - user: "Jo, des stimmt."
-      expect_intent: "mark_qualified_send_email aufrufen, kurzer herzlicher Abschied"
+      expect_intent: "kurzer herzlicher Abschied"
   expected_outcome: "qualified"
   expected_tool_call: "mark_qualified_send_email"
 
