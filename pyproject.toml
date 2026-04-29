@@ -14,6 +14,7 @@ dependencies = [
     "livekit-plugins-elevenlabs~=1.5",
     "livekit-plugins-openai>=1.5.6",
     "python-dotenv",
+    "rapidfuzz>=3.14.5",
 ]
 
 [dependency-groups]
