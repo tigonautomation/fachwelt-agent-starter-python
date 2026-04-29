@@ -45,9 +45,9 @@ TOP_5_VOICES = [
 # Test script with proper umlauts (same as Phase 2)
 TEST_SCRIPT = (
     "Guten Tag, hier ist Lisa vom Fachwelt Verlag. "
-    "Kurzer Hinweis: ich bin eine KI, das Gespraech wird "
-    "zur Qualitaetssicherung aufgezeichnet. Wir bauen einen "
-    "Marktplatz fuer B2B-Hersteller — haetten Sie zwei Minuten?"
+    "Kurzer Hinweis: ich bin eine KI, das Gespräch wird "
+    "zur Qualitätssicherung aufgezeichnet. Wir bauen einen "
+    "Marktplatz für B2B-Hersteller — hätten Sie zwei Minuten?"
 )
 
 # Models

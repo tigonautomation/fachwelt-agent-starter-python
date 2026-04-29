@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-29
 **Render model:** eleven_multilingual_v2
-**Test script:** "Guten Tag, hier ist Lisa vom Fachwelt Verlag. Kurzer Hinweis: ich bin eine KI, das Gespraech wird zur Qualitaetssicherung aufgezeichnet. Wir bauen einen Marktplatz fuer B2B-Hersteller — haetten Sie zwei Minuten?"
+**Test script:** "Guten Tag, hier ist Lisa vom Fachwelt Verlag. Kurzer Hinweis: ich bin eine KI, das Gespräch wird zur Qualitätssicherung aufgezeichnet. Wir bauen einen Marktplatz für B2B-Hersteller — hätten Sie zwei Minuten?"
 
 ## Settings
 
@@ -13,26 +13,26 @@
 
 | # | File | Voice | Setting | Levenshtein% |
 |---|---|---|---|---|
-| 1 | 01_WHaUUVTDq47Yqc9aDbkH_enniah_friendly_and_motivating_A.mp3 | Enniah - Friendly and Motivating | A | 94.6% |
-| 2 | 02_WHaUUVTDq47Yqc9aDbkH_enniah_friendly_and_motivating_B.mp3 | Enniah - Friendly and Motivating | B | 95.1% |
-| 3 | 03_NE7AIW5DoJ7lUosXV2KR_ela_cheerful_and_happy_A.mp3 | Ela - Cheerful and Happy | A | 95.6% |
-| 4 | 04_NE7AIW5DoJ7lUosXV2KR_ela_cheerful_and_happy_B.mp3 | Ela - Cheerful and Happy | B | 95.6% |
-| 5 | 05_pMrwpTuGOma7Nubxs5jo_lea_warm_and_supportive_A.mp3 | Lea - Warm and Supportive | A | 94.1% |
-| 6 | 06_pMrwpTuGOma7Nubxs5jo_lea_warm_and_supportive_B.mp3 | Lea - Warm and Supportive | B | 95.1% |
-| 7 | 07_rAmra0SCIYOxYmRNDSm3_lana_weiss_soft_and_sweet_A.mp3 | Lana Weiss - Soft and Sweet | A | 95.6% |
-| 8 | 08_rAmra0SCIYOxYmRNDSm3_lana_weiss_soft_and_sweet_B.mp3 | Lana Weiss - Soft and Sweet | B | 95.6% |
-| 9 | 09_v3V1d2rk6528UrLKRuy8_susi_effortless_and_confident_A.mp3 | Susi - Effortless and Confident | A | 95.6% |
-| 10 | 10_v3V1d2rk6528UrLKRuy8_susi_effortless_and_confident_B.mp3 | Susi - Effortless and Confident | B | 95.6% |
+| 1 | 01_WHaUUVTDq47Yqc9aDbkH_enniah_friendly_and_motivating_A.mp3 | Enniah - Friendly and Motivating | A | 99.5% |
+| 2 | 02_WHaUUVTDq47Yqc9aDbkH_enniah_friendly_and_motivating_B.mp3 | Enniah - Friendly and Motivating | B | 99.5% |
+| 3 | 03_NE7AIW5DoJ7lUosXV2KR_ela_cheerful_and_happy_A.mp3 | Ela - Cheerful and Happy | A | 99.5% |
+| 4 | 04_NE7AIW5DoJ7lUosXV2KR_ela_cheerful_and_happy_B.mp3 | Ela - Cheerful and Happy | B | 100.0% |
+| 5 | 05_pMrwpTuGOma7Nubxs5jo_lea_warm_and_supportive_A.mp3 | Lea - Warm and Supportive | A | 99.5% |
+| 6 | 06_pMrwpTuGOma7Nubxs5jo_lea_warm_and_supportive_B.mp3 | Lea - Warm and Supportive | B | 99.5% |
+| 7 | 07_rAmra0SCIYOxYmRNDSm3_lana_weiss_soft_and_sweet_A.mp3 | Lana Weiss - Soft and Sweet | A | 99.5% |
+| 8 | 08_rAmra0SCIYOxYmRNDSm3_lana_weiss_soft_and_sweet_B.mp3 | Lana Weiss - Soft and Sweet | B | 99.5% |
+| 9 | 09_v3V1d2rk6528UrLKRuy8_susi_effortless_and_confident_A.mp3 | Susi - Effortless and Confident | A | 99.5% |
+| 10 | 10_v3V1d2rk6528UrLKRuy8_susi_effortless_and_confident_B.mp3 | Susi - Effortless and Confident | B | 99.5% |
 
 ## Pronunciation Statistics
 
-- **Levenshtein% range:** 94.1% – 95.6%
-- **Average:** 95.3%
-- **Highest:** Ela - Cheerful and Happy (Setting A) at 95.6%
+- **Levenshtein% range:** 99.5% – 100.0%
+- **Average:** 99.5%
+- **Highest:** Ela - Cheerful and Happy (Setting B) at 100.0%
 
 ## Objective Recommendation
 
-Highest Levenshtein%: **Ela - Cheerful and Happy + Setting A** at 95.6%.
+Highest Levenshtein%: **Ela - Cheerful and Happy + Setting B** at 100.0%.
 
 (But pronunciation gap between top entries is small — final pick should be by ear.)
 
