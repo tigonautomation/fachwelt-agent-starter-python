@@ -63,3 +63,2017 @@ tests/test_conversations.py::test_conversation_scenario[b2c_endkunden_online_sho
 tests/test_conversations.py::test_conversation_scenario[vertrag_sofort_abschliessen] 
 [gw0] [ 85%] FAILED tests/test_conversations.py::test_conversation_scenario[hoeflich_aber_nein_klar] 
 tests/test_conversations.py::test_conversation_scenario[rueckruf_konkreter_zeitpunkt] 
+[gw1] [ 89%] FAILED tests/test_conversations.py::test_conversation_scenario[vertrag_sofort_abschliessen] 
+[gw0] [ 92%] FAILED tests/test_conversations.py::test_conversation_scenario[rueckruf_konkreter_zeitpunkt] 
+[gw3] [ 96%] PASSED tests/test_conversations.py::test_conversation_scenario[b2c_endkunden_online_shop] 
+[gw2] [100%] PASSED tests/test_conversations.py::test_conversation_scenario[multi_einwand_kette] 
+
+=================================== FAILURES ===================================
+___________ test_conversation_scenario[rueckruf_unklarer_zeitpunkt] ____________
+[gw3] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'User will Rückruf, nennt aber keinen konkreten Zeitpunkt', 'expected_outcome': 'callback', 'expected_tool_call': 'schedule_callback', 'id': 'rueckruf_unklarer_zeitpunkt', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1185f8090>, <livekit.plugins.openai.llm.LLM object at 0x1059c6ad0>)
+kwargs = {'intent': 'Rückruf bestätigen, höflich nach konkreterem Zeitfenster fragen (Vormittag/Nachmittag)'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message 'Bis dann, auf Wiederhören.' only says goodbye and does not confirm the callback or politely ask for a more specific time window (morning/afternoon).
+E           Context around failure:
+E               [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Alles klar, ich meld mich nächste Woche nochmal bei Ihnen. Einen guten Tag.'], 'metrics': {'started_speaking_at': 1777491313.5008729, 'stopped_speaking_at': 1777491314.309796, 'llm_node_ttft': 0.6838166669913335, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+E               [1] FunctionCallEvent(item={'arguments': '{"when":"irgendwann nächste Woche","notes":"User will Rückruf, Zeit noch offen"}', 'name': 'schedule_callback'})
+E               [2] FunctionCallOutputEvent(item={'name': 'schedule_callback', 'output': 'Callback noted. Continue to graceful exit.', 'is_error': False})
+E           >>> [3] ChatMessageEvent(item={'role': 'assistant', 'content': ['Bis dann, auf Wiederhören.'], 'metrics': {'started_speaking_at': 1777491315.1333382, 'stopped_speaking_at': 1777491315.215128, 'llm_node_ttft': 0.8225087909959257, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+____________ test_conversation_scenario[falsche_person_sekretaerin] ____________
+[gw1] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'Sekretärin nimmt ab, Inhaber ist nicht im Haus', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'falsche_person_sekretaerin', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x10b73ca50>, <livekit.plugins.openai.llm.LLM object at 0x10c5540d0>)
+kwargs = {'intent': 'KI-Disclosure, höflich nach bestem Weg fragen — E-Mail weiterleiten oder Rückruf wenn GF zurück'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message 'Einen guten Tag Ihnen.' is just a polite greeting and does not ask for the best way to disclose AI usage, nor does it mention forwarding an email or requesting a callback when the managing director returns. Therefore, it does not fulfill the intent.
+E           Context around failure:
+E               [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Verstanden, danke für die Info — ich meld mich dann nach der nächsten Woche nochmal. Einen guten Tag.'], 'metrics': {'started_speaking_at': 1777491313.751987, 'stopped_speaking_at': 1777491314.8044858, 'llm_node_ttft': 0.9348584999970626, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+E               [1] FunctionCallEvent(item={'arguments': '{"when":"nach nächster Woche","notes":"Herr Metzger abwesend, Rückruf angekündigt"}', 'name': 'schedule_callback'})
+E               [2] FunctionCallOutputEvent(item={'name': 'schedule_callback', 'output': 'Callback noted. Continue to graceful exit.', 'is_error': False})
+E           >>> [3] ChatMessageEvent(item={'role': 'assistant', 'content': ['Einen guten Tag Ihnen.'], 'metrics': {'started_speaking_at': 1777491315.5310562, 'stopped_speaking_at': 1777491315.619895, 'llm_node_ttft': 0.7255038330040406, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+___________ test_conversation_scenario[sprach_code_switch_englisch] ____________
+[gw3] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'User wechselt mitten im Gespräch ins Englische', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'sprach_code_switch_englisch', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x10ff24790>, <livekit.plugins.openai.llm.LLM object at 0x118e65890>)
+kwargs = {'intent': 'KI-Disclosure auf Englisch oder zweisprachig, kurzer Pitch, anbieten auf Deutsch oder Englisch fortzufahren'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message does not provide an AI disclosure in English or bilingual format, nor does it offer to continue in German or English. It only gives a brief introduction in German without mentioning the AI nature explicitly or offering language options.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Kurzer Hinweis vorab: ich bin eine KI vom Fachwelt Verlag, das Gespräch wird zur Qualitätssicherung aufgezeichnet. Ich meld mich wegen einer Vorab-Registrierung für den neuen Fachwelt Marketpleis — passt’s gerade ganz kurz für Sie?'], 'metrics': {'started_speaking_at': 1777491317.078672, 'stopped_speaking_at': 1777491317.663051, 'llm_node_ttft': 0.7717322500102455, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+___________ test_conversation_scenario[ueber_engagiert_alles_wissen] ___________
+[gw2] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'User ist begeistert und stellt sehr viele Detailfragen hintereinander', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'ueber_engagiert_alles_wissen', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x11df12050>, <livekit.plugins.openai.llm.LLM object at 0x11d824650>)
+kwargs = {'intent': 'E-Mail bestätigen und Bestätigung einholen'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message is asking for confirmation of an email address but does not actually confirm the email or explicitly request a confirmation response. It only repeats the email and asks if it is correct, which is a preliminary step but does not fulfill the intent of confirming the email and obtaining a confirmation.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Danke, ich wiederhole kurz — thomas at fliesen minus engel punkt de. Stimmt das so?'], 'metrics': {'started_speaking_at': 1777491317.81439, 'stopped_speaking_at': 1777491318.059466, 'llm_node_ttft': 0.7445214160106843, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+__________ test_conversation_scenario[technikfeindlich_robogespraech] __________
+[gw0] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'User lehnt grundsätzlich Gespräche mit KI/Robotern ab', 'expected_outcome': 'graceful_exit_no_tool', 'expected_tool_call': None, 'id': 'technikfeindlich_robogespraech', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+                await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+    
+            called = _function_call_names(all_events)
+            if expected_tool is None:
+                # Erwartet: KEIN qualifying tool-call (graceful exit ohne tool)
+                forbidden = {
+                    "mark_qualified_send_email",
+                    "schedule_callback",
+                    "mark_not_qualified",
+                }
+                actual_forbidden = [t for t in called if t in forbidden]
+>               assert not actual_forbidden, (
+                    f"Erwarteter Outcome=graceful_exit_no_tool, aber Tool-Calls "
+                    f"erfolgten: {actual_forbidden}"
+                )
+E               AssertionError: Erwarteter Outcome=graceful_exit_no_tool, aber Tool-Calls erfolgten: ['mark_not_qualified']
+E               assert not ['mark_not_qualified']
+
+tests/test_conversations.py:119: AssertionError
+___________ test_conversation_scenario[aggressiv_frustriert_haeufen] ___________
+[gw1] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'User ist sichtlich genervt und wird direkt unfreundlich', 'expected_outcome': 'not_qualified', 'expected_tool_call': 'mark_not_qualified', 'id': 'aggressiv_frustriert_haeufen', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x10ce90810>, <livekit.plugins.openai.llm.LLM object at 0x10cc7e310>)
+kwargs = {'intent': 'Frustration respektieren, freundlich beenden'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message does not clearly show respect for frustration or a friendly closure. It is very brief and could be perceived as abrupt or dismissive rather than empathetic or friendly.
+E           Context around failure:
+E               [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Verstehe, das ist ärgerlich — ich nehm Sie natürlich raus, danke für Ihr Feedback und einen ruhigen Tag.'], 'metrics': {'started_speaking_at': 1777491318.029511, 'stopped_speaking_at': 1777491318.689228, 'llm_node_ttft': 0.7619073749956442, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+E               [1] FunctionCallEvent(item={'arguments': '{"reason":"kein Interesse"}', 'name': 'mark_not_qualified'})
+E               [2] FunctionCallOutputEvent(item={'name': 'mark_not_qualified', 'output': 'Marked not qualified. Continue to graceful exit.', 'is_error': False})
+E           >>> [3] ChatMessageEvent(item={'role': 'assistant', 'content': ['Sie hören nichts mehr von uns — alles Gute für Sie.'], 'metrics': {'started_speaking_at': 1777491319.515795, 'stopped_speaking_at': 1777491319.673059, 'llm_node_ttft': 0.8255477500060806, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+______ test_conversation_scenario[hintergrundlaerm_schlechte_verbindung] _______
+[gw3] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'User kann kaum hören, bittet mehrfach um Wiederholung', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'hintergrundlaerm_schlechte_verbindung', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x118e647d0>, <livekit.plugins.openai.llm.LLM object at 0x118e201d0>)
+kwargs = {'intent': 'KI-Disclosure kurz, deutlich und langsam wiederholen, Angebot Rückruf zu besserem Zeitpunkt'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message repeats the KI disclosure clearly and slowly, but it does not offer a callback at a better time. Instead, it offers to send information via email, which does not fulfill the intent of offering a callback.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ["Kein Problem, ich versuch's noch mal langsam — ich bin eine KI vom Fachwelt Verlag, das Gespräch wird zur Qualitätssicherung aufgezeichnet. Passt's besser, wenn ich Ihnen Infos per E-Mail schicke?"], 'metrics': {'started_speaking_at': 1777491320.041337, 'stopped_speaking_at': 1777491320.681275, 'llm_node_ttft': 0.7549302089901175, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+____________ test_conversation_scenario[email_tippfehler_korrektur] ____________
+[gw1] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'User nennt E-Mail mit Tippfehler, korrigiert sich dann selbst', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'email_tippfehler_korrektur', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x10ce77210>, <livekit.plugins.openai.llm.LLM object at 0x10c645610>)
+kwargs = {'intent': 'E-Mail bestätigen und Bestätigung einholen'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message is asking for confirmation of an email address but does not explicitly confirm the email or obtain a clear confirmation from the user. It only repeats the email and asks if it is correct, which is a step towards confirmation but does not fulfill the intent of confirming the email and obtaining a confirmation.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Danke, ich wiederhol das kurz: mueller at sanitaer minus technik punkt de. Stimmt das so?'], 'metrics': {'started_speaking_at': 1777491321.966625, 'stopped_speaking_at': 1777491322.344922, 'llm_node_ttft': 0.7820095839997521, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+__________ test_conversation_scenario[unmoeglich_100_leads_garantie] ___________
+[gw1] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'User fordert Garantie von 100 Leads pro Monat', 'expected_outcome': 'not_qualified', 'expected_tool_call': 'mark_not_qualified', 'id': 'unmoeglich_100_leads_garantie', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x10c531e50>, <livekit.plugins.openai.llm.LLM object at 0x10cc26650>)
+kwargs = {'intent': 'KI-Disclosure, ehrlich verneinen (keine Garantien möglich), Mehrwert trotzdem kurz nennen, Angebot schriftlicher Infos'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message honestly denies guarantees, but it does not mention any added value or offer written information as requested by the intent.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Das kann ich Ihnen nicht garantieren — der Marketpleis startet ja erst im September, genaue Mengen hängen von der Nachfrage ab. Soll das Team Ihnen dazu Zahlen schicken?'], 'metrics': {'started_speaking_at': 1777491327.2043788, 'stopped_speaking_at': 1777491327.602103, 'llm_node_ttft': 3.2748095840070164, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29217, Requested 1791. Please try again in 2.015s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_5abb485a97124b78b3351264997079e4, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29217, Requested 1791. Please try again in 2.015s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29039, Requested 1791. Please try again in 1.66s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_22fd21944f12410eab8361d9a8dbf952, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29039, Requested 1791. Please try again in 1.66s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+______ test_conversation_scenario[eiliger_geschaeftsfuehrer_30_sekunden] _______
+[gw0] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'GF hat genau 30 Sekunden und will den Kern sofort', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'eiliger_geschaeftsfuehrer_30_sekunden', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x10e780610>, <livekit.plugins.openai.llm.LLM object at 0x10ee922d0>)
+kwargs = {'intent': 'E-Mail bestätigen und Bestätigung einholen'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message asks for confirmation of an email address but does not itself confirm the email or explicitly request a confirmation response. It is more of a question than a confirmation and does not fulfill the intent of confirming the email and obtaining a confirmation.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Ich hab "info at bauchemie minus roth punkt de" notiert. Stimmt das so?'], 'metrics': {'started_speaking_at': 1777491327.509144, 'stopped_speaking_at': 1777491327.695654, 'llm_node_ttft': 3.4356087500054855, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29113, Requested 1878. Please try again in 1.981s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_09eeb92612384de1bdaeb24ac7f27b45, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29113, Requested 1878. Please try again in 1.981s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28947, Requested 1878. Please try again in 1.65s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_b86cacac31974a2eabc4bf3c60b39905, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28947, Requested 1878. Please try again in 1.65s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+___________ test_conversation_scenario[korrigiert_sich_mid_sentence] ___________
+[gw3] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'User korrigiert sich mitten im Satz bei der E-Mail-Angabe', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'korrigiert_sich_mid_sentence', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+>                   pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+E                   Failed: Turn 2: keine assistant-message — events=[]
+
+tests/test_conversations.py:102: Failed
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29452, Requested 1796. Please try again in 2.496s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_7245f9a4f41f47a983eccb7436d51f6b, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29452, Requested 1796. Please try again in 2.496s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29250, Requested 1796. Please try again in 2.092s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_71062f69de924b65a0e29756deae77ce, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29250, Requested 1796. Please try again in 2.092s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28531, Requested 1796. Please try again in 654ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_797dbe5c79734922ae68416d3b0b7d55, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28531, Requested 1796. Please try again in 654ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+ERROR    livekit.agents:log.py:22 Error in _llm_inference_task
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 219, in _main_task
+    return await self._run()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/inference/llm.py", line 407, in _run
+    raise APIStatusError(
+livekit.agents._exceptions.APIStatusError: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1796. Please try again in 3.592s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_91705addce354c8d82c8db6318228697, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1796. Please try again in 3.592s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/utils/log.py", line 17, in async_fn_logs
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py", line 71, in async_wrapper
+    return await func(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/generation.py", line 144, in _llm_inference_task
+    async for chunk in llm_node:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/agent.py", line 456, in llm_node
+    async for chunk in stream:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 381, in __anext__
+    raise exc  # noqa: B904
+    ^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 194, in _traceable_main_task
+    await self._main_task()
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 235, in _main_task
+    raise APIConnectionError(
+livekit.agents._exceptions.APIConnectionError: failed to generate LLM completion after 4 attempts
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1803. Please try again in 3.606s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_90d74f9ec3a24af297021c723a83cb09, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1803. Please try again in 3.606s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1803. Please try again in 3.606s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_68bd0c4120544885a93de63f5a040ad6, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1803. Please try again in 3.606s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1803. Please try again in 3.606s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_43b7120588a64ba4a6b32b8b456c5c60, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1803. Please try again in 3.606s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+ERROR    livekit.agents:log.py:22 Error in _llm_inference_task
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 219, in _main_task
+    return await self._run()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/inference/llm.py", line 407, in _run
+    raise APIStatusError(
+livekit.agents._exceptions.APIStatusError: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29268, Requested 1803. Please try again in 2.142s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_f59f452e9aa442969c4ee0fe8fcade7c, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29268, Requested 1803. Please try again in 2.142s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/utils/log.py", line 17, in async_fn_logs
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py", line 71, in async_wrapper
+    return await func(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/generation.py", line 144, in _llm_inference_task
+    async for chunk in llm_node:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/agent.py", line 456, in llm_node
+    async for chunk in stream:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 381, in __anext__
+    raise exc  # noqa: B904
+    ^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 194, in _traceable_main_task
+    await self._main_task()
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 235, in _main_task
+    raise APIConnectionError(
+livekit.agents._exceptions.APIConnectionError: failed to generate LLM completion after 4 attempts
+________________ test_conversation_scenario[dsgvo_profi_ai_act] ________________
+[gw2] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'DSGVO-bewusster User fragt nach Rechtsgrundlage für Aufzeichnung und KI-Einsatz', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'dsgvo_profi_ai_act', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+>                   pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+E                   Failed: Turn 3: keine assistant-message — events=[]
+
+tests/test_conversations.py:102: Failed
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29631, Requested 1920. Please try again in 3.102s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_41f445cb8fa74daea26bd2161aa845c4, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29631, Requested 1920. Please try again in 3.102s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29465, Requested 1920. Please try again in 2.77s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_d5f087a0d4d84d488c6d8bbc20d61db7, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29465, Requested 1920. Please try again in 2.77s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28362, Requested 1920. Please try again in 564ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_21f8a7fe8e384beea1a59f8faf597fbf, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28362, Requested 1920. Please try again in 564ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+ERROR    livekit.agents:log.py:22 Error in _llm_inference_task
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 219, in _main_task
+    return await self._run()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/inference/llm.py", line 407, in _run
+    raise APIStatusError(
+livekit.agents._exceptions.APIStatusError: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1920. Please try again in 3.84s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_2635f2015a1b42a996ff3e6601bf0d1f, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1920. Please try again in 3.84s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/utils/log.py", line 17, in async_fn_logs
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py", line 71, in async_wrapper
+    return await func(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/generation.py", line 144, in _llm_inference_task
+    async for chunk in llm_node:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/agent.py", line 456, in llm_node
+    async for chunk in stream:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 381, in __anext__
+    raise exc  # noqa: B904
+    ^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 194, in _traceable_main_task
+    await self._main_task()
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 235, in _main_task
+    raise APIConnectionError(
+livekit.agents._exceptions.APIConnectionError: failed to generate LLM completion after 4 attempts
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1924. Please try again in 3.848s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_b60e1f0b713048a694faaa0e1b26826e, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1924. Please try again in 3.848s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1924. Please try again in 3.848s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_fdf7b4d1f1a34e4f9f67c21acf798d08, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1924. Please try again in 3.848s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1924. Please try again in 3.848s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_b2749790c77541eab72c57a15b3601ac, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1924. Please try again in 3.848s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+ERROR    livekit.agents:log.py:22 Error in _llm_inference_task
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 219, in _main_task
+    return await self._run()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/inference/llm.py", line 407, in _run
+    raise APIStatusError(
+livekit.agents._exceptions.APIStatusError: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29142, Requested 1924. Please try again in 2.132s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_d16062d5ecce4e4fab9ac4212154f7b3, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29142, Requested 1924. Please try again in 2.132s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/utils/log.py", line 17, in async_fn_logs
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py", line 71, in async_wrapper
+    return await func(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/generation.py", line 144, in _llm_inference_task
+    async for chunk in llm_node:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/agent.py", line 456, in llm_node
+    async for chunk in stream:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 381, in __anext__
+    raise exc  # noqa: B904
+    ^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 194, in _traceable_main_task
+    await self._main_task()
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 235, in _main_task
+    raise APIConnectionError(
+livekit.agents._exceptions.APIConnectionError: failed to generate LLM completion after 4 attempts
+_____ test_conversation_scenario[privatperson_irrtuemlicherweise_gelistet] _____
+[gw1] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'Angerufener ist Privatperson, kein Hersteller oder Anbieter', 'expected_outcome': 'not_qualified', 'expected_tool_call': 'mark_not_qualified', 'id': 'privatperson_irrtuemlicherweise_gelistet', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+>                   pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+E                   Failed: Turn 1: keine assistant-message — events=[]
+
+tests/test_conversations.py:102: Failed
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1790. Please try again in 3.58s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_883f767b6bc04e26a6f441aaeb5fa81c, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1790. Please try again in 3.58s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1790. Please try again in 3.58s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_964bf8212d8e4ef5a438bb00f17a0b42, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1790. Please try again in 3.58s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29999, Requested 1790. Please try again in 3.578s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_488021418bcd4b62a0c0dbda9afa409f, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29999, Requested 1790. Please try again in 3.578s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+ERROR    livekit.agents:log.py:22 Error in _llm_inference_task
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 219, in _main_task
+    return await self._run()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/inference/llm.py", line 407, in _run
+    raise APIStatusError(
+livekit.agents._exceptions.APIStatusError: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28881, Requested 1790. Please try again in 1.342s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_7561bdd768ef4cffb3608545895456cd, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28881, Requested 1790. Please try again in 1.342s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/utils/log.py", line 17, in async_fn_logs
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py", line 71, in async_wrapper
+    return await func(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/generation.py", line 144, in _llm_inference_task
+    async for chunk in llm_node:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/agent.py", line 456, in llm_node
+    async for chunk in stream:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 381, in __anext__
+    raise exc  # noqa: B904
+    ^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 194, in _traceable_main_task
+    await self._main_task()
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 235, in _main_task
+    raise APIConnectionError(
+livekit.agents._exceptions.APIConnectionError: failed to generate LLM completion after 4 attempts
+_____________ test_conversation_scenario[sofort_kaufen_zu_schnell] _____________
+[gw3] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'User will sofort kaufen / buchen noch im Anruf', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'sofort_kaufen_zu_schnell', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x11851fad0>, <livekit.plugins.openai.llm.LLM object at 0x11abab810>)
+kwargs = {'intent': 'KI-Disclosure, Begeisterung freundlich anerkennen, erklären dass Registrierung per E-Mail-Link erfolgt, nach Adresse fragen'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message acknowledges enthusiasm and explains that registration is via email link, but it does not clearly disclose that it is an AI (KI) or explicitly mention that registration is done via an email link. It only asks for the email address to send information, which is not the same as explaining the registration process via email link.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Klasse, das freut mich! Kurzer Hinweis vorab — ich bin eine KI vom Fachwelt Verlag, das Gespräch wird zur Qualitätssicherung aufgezeichnet.\n\nIch schick Ihnen alles Wichtige gern per E-Mail — könnten Sie mir bitte Ihre E-Mail-Adresse nennen?'], 'metrics': {'started_speaking_at': 1777491336.0607538, 'stopped_speaking_at': 1777491336.4653099, 'llm_node_ttft': 3.3239848329976667, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29114, Requested 1789. Please try again in 1.806s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_cd56449c131042c4831a03d47b1acf07, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29114, Requested 1789. Please try again in 1.806s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28965, Requested 1789. Please try again in 1.508s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_7d803f5558824588a8252367f035c14f, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28965, Requested 1789. Please try again in 1.508s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+___________ test_conversation_scenario[bestandskunde_kennt_fachwelt] ___________
+[gw2] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'User ist bereits im Verlag gelistet und kennt Fachwelt gut', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'bestandskunde_kennt_fachwelt', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x11ea99d10>, <livekit.plugins.openai.llm.LLM object at 0x11ea90750>)
+kwargs = {'intent': 'KI-Disclosure, Unterschied Marketplace vs. Verlag-Inserat kurz erklären (neue digitale Plattform, September 2026), Mehrwert herausstellen ohne Details zu erfinden'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message provides a brief AI disclosure and mentions the new marketplace platform launching in September, but it does not clearly explain the difference between the marketplace and publisher advertisement, nor does it highlight the added value without inventing details as requested.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Kurzer Hinweis vorab: ich bin eine KI vom Fachwelt Verlag, das Gespräch wird zur Qualitätssicherung aufgezeichnet. Es geht ums neue Portal — den Marketpleis, der im September startet. Hersteller können dort Produkte für Facheinkäufer listen, ganz ohne Zwischenhandel.'], 'metrics': {'started_speaking_at': 1777491336.539686, 'stopped_speaking_at': 1777491337.117795, 'llm_node_ttft': 3.549882916995557, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29003, Requested 1794. Please try again in 1.594s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_b79e916980ea48c19eab8118321e6088, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29003, Requested 1794. Please try again in 1.594s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28875, Requested 1794. Please try again in 1.338s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_b53121126fd24d3cba952228b9bd3ac5, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28875, Requested 1794. Please try again in 1.338s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+_______ test_conversation_scenario[konkurrenzvergleich_wer_liefert_was] ________
+[gw0] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'User fragt nach Unterschied zu Wer-liefert-was oder ähnlichen Plattformen', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'konkurrenzvergleich_wer_liefert_was', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+>                   pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+E                   Failed: Turn 3: keine assistant-message — events=[]
+
+tests/test_conversations.py:102: Failed
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1790. Please try again in 3.58s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_ac9a966a4bad48fd9258e0eef4975b2d, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1790. Please try again in 3.58s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1790. Please try again in 3.58s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_c398865540714a50810a131e6ea76304, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1790. Please try again in 3.58s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29593, Requested 1790. Please try again in 2.766s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_85859765adf747d5ad9d1e46e359953c, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29593, Requested 1790. Please try again in 2.766s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+ERROR    livekit.agents:log.py:22 Error in _llm_inference_task
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 219, in _main_task
+    return await self._run()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/inference/llm.py", line 407, in _run
+    raise APIStatusError(
+livekit.agents._exceptions.APIStatusError: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28460, Requested 1790. Please try again in 500ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_d4d525fc3a9a40ec831f86f731a1ba71, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28460, Requested 1790. Please try again in 500ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/utils/log.py", line 17, in async_fn_logs
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py", line 71, in async_wrapper
+    return await func(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/generation.py", line 144, in _llm_inference_task
+    async for chunk in llm_node:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/agent.py", line 456, in llm_node
+    async for chunk in stream:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 381, in __anext__
+    raise exc  # noqa: B904
+    ^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 194, in _traceable_main_task
+    await self._main_task()
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 235, in _main_task
+    raise APIConnectionError(
+livekit.agents._exceptions.APIConnectionError: failed to generate LLM completion after 4 attempts
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28363, Requested 1807. Please try again in 340ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_2c9cf779ab3e419da81d5f6eb140b1b7, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28363, Requested 1807. Please try again in 340ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28197, Requested 1807. Please try again in 8ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_fa61861665f042fca752b82fb2a2aafc, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28197, Requested 1807. Please try again in 8ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1807. Please try again in 3.614s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_b3b8c82f8cc54de7977a0f3867a760fd, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1807. Please try again in 3.614s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+ERROR    livekit.agents:log.py:22 Error in _llm_inference_task
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 219, in _main_task
+    return await self._run()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/inference/llm.py", line 407, in _run
+    raise APIStatusError(
+livekit.agents._exceptions.APIStatusError: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1807. Please try again in 3.614s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_210dae8884d94b41bf04fc39990055c7, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1807. Please try again in 3.614s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/utils/log.py", line 17, in async_fn_logs
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py", line 71, in async_wrapper
+    return await func(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/generation.py", line 144, in _llm_inference_task
+    async for chunk in llm_node:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/agent.py", line 456, in llm_node
+    async for chunk in stream:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 381, in __anext__
+    raise exc  # noqa: B904
+    ^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 194, in _traceable_main_task
+    await self._main_task()
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 235, in _main_task
+    raise APIConnectionError(
+livekit.agents._exceptions.APIConnectionError: failed to generate LLM completion after 4 attempts
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1811. Please try again in 3.622s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_90f3522878ad414c880df37fe8ff6f0b, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1811. Please try again in 3.622s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1811. Please try again in 3.622s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_be9c3d8fdc524fd09621c8b148b4cc03, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1811. Please try again in 3.622s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28923, Requested 1811. Please try again in 1.468s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_16ecf749d8b647939679d89dced5777f, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28923, Requested 1811. Please try again in 1.468s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+ERROR    livekit.agents:log.py:22 Error in _llm_inference_task
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 219, in _main_task
+    return await self._run()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/inference/llm.py", line 407, in _run
+    raise APIStatusError(
+livekit.agents._exceptions.APIStatusError: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29561, Requested 1811. Please try again in 2.744s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_3de18d0f95064c1ba157d01535e25495, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29561, Requested 1811. Please try again in 2.744s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/utils/log.py", line 17, in async_fn_logs
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py", line 71, in async_wrapper
+    return await func(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/generation.py", line 144, in _llm_inference_task
+    async for chunk in llm_node:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/agent.py", line 456, in llm_node
+    async for chunk in stream:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 381, in __anext__
+    raise exc  # noqa: B904
+    ^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 194, in _traceable_main_task
+    await self._main_task()
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 235, in _main_task
+    raise APIConnectionError(
+livekit.agents._exceptions.APIConnectionError: failed to generate LLM completion after 4 attempts
+____________ test_conversation_scenario[alles_per_post_kein_email] _____________
+[gw2] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'GF will ausschließlich postalische Kommunikation, keine E-Mail', 'expected_outcome': 'not_qualified', 'expected_tool_call': 'mark_not_qualified', 'id': 'alles_per_post_kein_email', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+>                   pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+E                   Failed: Turn 2: keine assistant-message — events=[]
+
+tests/test_conversations.py:102: Failed
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1790. Please try again in 3.58s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_c5dc241195834872b1ecebb4e0fd600a, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1790. Please try again in 3.58s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1790. Please try again in 3.58s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_b980e10be0ce4f72906f744811ef89b7, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1790. Please try again in 3.58s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28906, Requested 1790. Please try again in 1.392s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_602b07b3a64c4d5f9ad19e8f329e16ea, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28906, Requested 1790. Please try again in 1.392s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+ERROR    livekit.agents:log.py:22 Error in _llm_inference_task
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 219, in _main_task
+    return await self._run()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/inference/llm.py", line 407, in _run
+    raise APIStatusError(
+livekit.agents._exceptions.APIStatusError: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29578, Requested 1790. Please try again in 2.736s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_72bbeefdfdc34977878ca20a3d3952e3, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29578, Requested 1790. Please try again in 2.736s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/utils/log.py", line 17, in async_fn_logs
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py", line 71, in async_wrapper
+    return await func(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/generation.py", line 144, in _llm_inference_task
+    async for chunk in llm_node:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/agent.py", line 456, in llm_node
+    async for chunk in stream:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 381, in __anext__
+    raise exc  # noqa: B904
+    ^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 194, in _traceable_main_task
+    await self._main_task()
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 235, in _main_task
+    raise APIConnectionError(
+livekit.agents._exceptions.APIConnectionError: failed to generate LLM completion after 4 attempts
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29481, Requested 1803. Please try again in 2.568s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_3cb0534973774826a5cd60e36dedc3ea, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29481, Requested 1803. Please try again in 2.568s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1803. Please try again in 3.606s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_13967a5dbd6747319214ad006bb95634, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1803. Please try again in 3.606s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1803. Please try again in 3.606s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_4ebb21abb72741f69ef8010a92212541, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1803. Please try again in 3.606s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+ERROR    livekit.agents:log.py:22 Error in _llm_inference_task
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 219, in _main_task
+    return await self._run()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/inference/llm.py", line 407, in _run
+    raise APIStatusError(
+livekit.agents._exceptions.APIStatusError: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29678, Requested 1803. Please try again in 2.962s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_320b6abce63d496c85c6170e07d5275d, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29678, Requested 1803. Please try again in 2.962s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/utils/log.py", line 17, in async_fn_logs
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py", line 71, in async_wrapper
+    return await func(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/generation.py", line 144, in _llm_inference_task
+    async for chunk in llm_node:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/agent.py", line 456, in llm_node
+    async for chunk in stream:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 381, in __anext__
+    raise exc  # noqa: B904
+    ^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 194, in _traceable_main_task
+    await self._main_task()
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 235, in _main_task
+    raise APIConnectionError(
+livekit.agents._exceptions.APIConnectionError: failed to generate LLM completion after 4 attempts
+____________ test_conversation_scenario[dialektaler_sueddeutscher] _____________
+[gw1] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'User antwortet auf Schwäbisch/Bayrisch, versteht aber den Kontext', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'dialektaler_sueddeutscher', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x10cea4490>, <livekit.plugins.openai.llm.LLM object at 0x10cc24b10>)
+kwargs = {'intent': 'kurzer herzlicher Abschied'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message is a polite acknowledgment and confirmation of an email address, but it lacks a short heartfelt farewell. It ends with 'Schönen Tag noch,' which is polite but not a heartfelt goodbye.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Danke, das hab ich notiert—g punkt huber at malerbetrieb minus huber punkt de. Die E-Mail kommt raus. Schönen Tag noch.'], 'metrics': {'started_speaking_at': 1777491344.4326599, 'stopped_speaking_at': 1777491345.348054, 'llm_node_ttft': 0.9870432089956012, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+E               [1] FunctionCallEvent(item={'arguments': '{"email":"g.huber@malerbetrieb-huber.de"}', 'name': 'mark_qualified_send_email'})
+E               [2] FunctionCallOutputEvent(item={'name': 'mark_qualified_send_email', 'output': 'Email queued. Continue to graceful exit.', 'is_error': False})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28725, Requested 1785. Please try again in 1.02s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_9309184993614772a6ac147e9f60b6c9, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28725, Requested 1785. Please try again in 1.02s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28559, Requested 1785. Please try again in 688ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_607986fa1f164824a195b0d9174217b2, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28559, Requested 1785. Please try again in 688ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1785. Please try again in 3.57s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_4ba075df9438431aa32f483e73853271, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1785. Please try again in 3.57s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+ERROR    livekit.agents:log.py:22 Error in _llm_inference_task
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 219, in _main_task
+    return await self._run()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/inference/llm.py", line 407, in _run
+    raise APIStatusError(
+livekit.agents._exceptions.APIStatusError: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1785. Please try again in 3.57s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_166a134c14b444fb8e96866843146420, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1785. Please try again in 3.57s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/utils/log.py", line 17, in async_fn_logs
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py", line 71, in async_wrapper
+    return await func(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/generation.py", line 144, in _llm_inference_task
+    async for chunk in llm_node:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/agent.py", line 456, in llm_node
+    async for chunk in stream:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 381, in __anext__
+    raise exc  # noqa: B904
+    ^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 194, in _traceable_main_task
+    await self._main_task()
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 235, in _main_task
+    raise APIConnectionError(
+livekit.agents._exceptions.APIConnectionError: failed to generate LLM completion after 4 attempts
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1805. Please try again in 3.61s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_b34cdb87cc094611a3a862033fcdf1b8, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1805. Please try again in 3.61s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1805. Please try again in 3.61s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_e71a0e6ba4cb420abde15ea39306f7ef, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1805. Please try again in 3.61s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29321, Requested 1805. Please try again in 2.252s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_94422d02d9134939800c6ff5f5a1edc5, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29321, Requested 1805. Please try again in 2.252s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+ERROR    livekit.agents:log.py:22 Error in _llm_inference_task
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 219, in _main_task
+    return await self._run()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/inference/llm.py", line 407, in _run
+    raise APIStatusError(
+livekit.agents._exceptions.APIStatusError: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28201, Requested 1805. Please try again in 12ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_cc537acaafdc47bc83ff6c9edacbe220, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28201, Requested 1805. Please try again in 12ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/utils/log.py", line 17, in async_fn_logs
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py", line 71, in async_wrapper
+    return await func(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/generation.py", line 144, in _llm_inference_task
+    async for chunk in llm_node:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/agent.py", line 456, in llm_node
+    async for chunk in stream:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 381, in __anext__
+    raise exc  # noqa: B904
+    ^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 194, in _traceable_main_task
+    await self._main_task()
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 235, in _main_task
+    raise APIConnectionError(
+livekit.agents._exceptions.APIConnectionError: failed to generate LLM completion after 4 attempts
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29877, Requested 1809. Please try again in 3.372s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_7ab0eaf49e3541eaac5d79fa8e1ced2f, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29877, Requested 1809. Please try again in 3.372s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1852. Please try again in 3.704s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_f38a219692fe46db8d47c955505b8500, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1852. Please try again in 3.704s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1852. Please try again in 3.704s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_60ebe47478d641d69a12766302a71975, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1852. Please try again in 3.704s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1852. Please try again in 3.704s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_8ba57c40418d4a5ea86d669ec44c750e, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1852. Please try again in 3.704s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+ERROR    livekit.agents:log.py:22 Error in _llm_inference_task
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 219, in _main_task
+    return await self._run()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/inference/llm.py", line 407, in _run
+    raise APIStatusError(
+livekit.agents._exceptions.APIStatusError: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29072, Requested 1852. Please try again in 1.848s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_dc9cb552c44b471cabe648010bd19b34, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29072, Requested 1852. Please try again in 1.848s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/utils/log.py", line 17, in async_fn_logs
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py", line 71, in async_wrapper
+    return await func(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/generation.py", line 144, in _llm_inference_task
+    async for chunk in llm_node:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/agent.py", line 456, in llm_node
+    async for chunk in stream:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 381, in __anext__
+    raise exc  # noqa: B904
+    ^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 194, in _traceable_main_task
+    await self._main_task()
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 235, in _main_task
+    raise APIConnectionError(
+livekit.agents._exceptions.APIConnectionError: failed to generate LLM completion after 4 attempts
+_______ test_conversation_scenario[stiller_einsilbiger_gesprachspartner] _______
+[gw3] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'User antwortet nur einsilbig, sehr kurz', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'stiller_einsilbiger_gesprachspartner', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x11b825b10>, <livekit.plugins.openai.llm.LLM object at 0x11b85a290>)
+kwargs = {'intent': 'Einfache klare Frage: Infos per E-Mail gewünscht?'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message does not contain a simple and clear question asking if information is desired via email. Instead, it introduces the speaker as an AI and asks if it's okay to explain the marketplace, which does not fulfill the intent.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ["Kurzer Hinweis vorab: ich bin eine KI vom Fachwelt Verlag, das Gespräch wird zur Qualitätssicherung aufgezeichnet. Ich meld mich wegen dem neuen Marketpleis aus unserem Haus — passt's kurz, dass ich erkläre, worum's geht?"], 'metrics': {'started_speaking_at': 1777491343.990826, 'stopped_speaking_at': 1777491344.6592581, 'llm_node_ttft': 0.7777862920047482, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1773. Please try again in 3.546s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_b26e25c2116d443abe318179fe6d7019, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1773. Please try again in 3.546s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1773. Please try again in 3.546s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_345887aba97442688f084f3d12113148, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1773. Please try again in 3.546s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29460, Requested 1773. Please try again in 2.466s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_d8d66e08d09e4b6fba5f347f7720523d, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29460, Requested 1773. Please try again in 2.466s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+ERROR    livekit.agents:log.py:22 Error in _llm_inference_task
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 219, in _main_task
+    return await self._run()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/inference/llm.py", line 407, in _run
+    raise APIStatusError(
+livekit.agents._exceptions.APIStatusError: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28328, Requested 1773. Please try again in 202ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_6fa48c59e3044f0f957b9d57e95fe64f, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28328, Requested 1773. Please try again in 202ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/utils/log.py", line 17, in async_fn_logs
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py", line 71, in async_wrapper
+    return await func(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/generation.py", line 144, in _llm_inference_task
+    async for chunk in llm_node:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/agent.py", line 456, in llm_node
+    async for chunk in stream:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 381, in __anext__
+    raise exc  # noqa: B904
+    ^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 194, in _traceable_main_task
+    await self._main_task()
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 235, in _main_task
+    raise APIConnectionError(
+livekit.agents._exceptions.APIConnectionError: failed to generate LLM completion after 4 attempts
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: Request timed out., retrying in 0.1s
+_____________ test_conversation_scenario[bestandskunde_beschwerde] _____________
+[gw0] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'Bestehender Fachwelt-Anzeigenkunde hat eine offene Beschwerde', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'bestandskunde_beschwerde', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x10fcb9f50>, <livekit.plugins.openai.llm.LLM object at 0x10f8bae10>)
+kwargs = {'intent': 'E-Mail bestätigen und Bestätigung einholen'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message repeats an email address for confirmation but does not explicitly confirm the email or request a clear confirmation from the recipient. It only asks 'stimmt das so?' which is a question but not a direct request for email confirmation or an explicit confirmation statement.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Danke, ich wiederhole kurz: beschwerden at klimaanlage minus breuer punkt de — stimmt das so?'], 'metrics': {'started_speaking_at': 1777491354.8980742, 'stopped_speaking_at': 1777491355.086337, 'llm_node_ttft': 5.506486458005384, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29420, Requested 1800. Please try again in 2.44s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_0919a3b3a0de470b957c48369117407a, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29420, Requested 1800. Please try again in 2.44s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29256, Requested 1800. Please try again in 2.112s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_4af62a532789467fbd2a0ea291207f68, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29256, Requested 1800. Please try again in 2.112s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1800. Please try again in 3.6s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_ca38e96b37ab46c6985d7e4868c0158e, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1800. Please try again in 3.6s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+ERROR    livekit.agents:log.py:22 Error in _llm_inference_task
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 219, in _main_task
+    return await self._run()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/inference/llm.py", line 407, in _run
+    raise APIStatusError(
+livekit.agents._exceptions.APIStatusError: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29571, Requested 1800. Please try again in 2.742s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_00a7accc9d7442bfa68e378e95859902, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29571, Requested 1800. Please try again in 2.742s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/utils/log.py", line 17, in async_fn_logs
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py", line 71, in async_wrapper
+    return await func(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/generation.py", line 144, in _llm_inference_task
+    async for chunk in llm_node:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/agent.py", line 456, in llm_node
+    async for chunk in stream:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 381, in __anext__
+    raise exc  # noqa: B904
+    ^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 194, in _traceable_main_task
+    await self._main_task()
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 235, in _main_task
+    raise APIConnectionError(
+livekit.agents._exceptions.APIConnectionError: failed to generate LLM completion after 4 attempts
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29480, Requested 1820. Please try again in 2.6s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_0a0dedea64c1463085b930e75e7cd366, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29480, Requested 1820. Please try again in 2.6s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29293, Requested 1820. Please try again in 2.226s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_8453618680e9456a9e018ecedbeb4a3a, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29293, Requested 1820. Please try again in 2.226s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28198, Requested 1820. Please try again in 36ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_54c36ad66ceb4313b53f4692ee1fc34b, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28198, Requested 1820. Please try again in 36ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+____________ test_conversation_scenario[konkurrenz_preis_vergleich] ____________
+[gw2] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'User fragt nach den Konditionen von Wettbewerbern als Vergleich', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'konkurrenz_preis_vergleich', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x11d83a010>, <livekit.plugins.openai.llm.LLM object at 0x11ec94090>)
+kwargs = {'intent': 'KI-Disclosure, Preisvergleich zu Konkurrenten nicht anstellen (keine Daten), Fachwelt-Registrierung als kostenlos hervorheben, Details schriftlich anbieten'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message highlights that the pre-registration is free and offers to send details in writing, fulfilling the part about Fachwelt-Registrierung as kostenlos and offering details schriftlich. However, it does not include any KI-Disclosure or explicitly state that no price comparison to competitors is made due to lack of data, which are also part of the intent.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Die Vorab-Registrierung im Marketpleis ist kostenlos, Gebühren erst ab aktivem Verkauf im September — Details zu Konditionen schickt das Team Ihnen gerne schriftlich. Darf ich Ihnen die Infos per E-Mail schicken?'], 'metrics': {'started_speaking_at': 1777491354.7102232, 'stopped_speaking_at': 1777491355.410882, 'llm_node_ttft': 5.472782459008158, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29507, Requested 1788. Please try again in 2.59s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_8253648461144207bb615c696903308a, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29507, Requested 1788. Please try again in 2.59s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29343, Requested 1788. Please try again in 2.262s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_98685b3656394f60bdb0bf55fa20b4b6, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29343, Requested 1788. Please try again in 2.262s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28238, Requested 1788. Please try again in 52ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_3a31f01db41b41cb9413648a82a8d5e6, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28238, Requested 1788. Please try again in 52ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+____________ test_conversation_scenario[zehn_referenzen_forderung] _____________
+[gw3] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'User fordert Referenzliste bevor er sich registriert', 'expected_outcome': 'not_qualified', 'expected_tool_call': 'mark_not_qualified', 'id': 'zehn_referenzen_forderung', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+>                   pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+E                   Failed: Turn 2: keine assistant-message — events=[]
+
+tests/test_conversations.py:102: Failed
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29971, Requested 1798. Please try again in 3.538s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_9d99444279c94acd8bff4e200f4ac9f2, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29971, Requested 1798. Please try again in 3.538s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29786, Requested 1798. Please try again in 3.168s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_bd3d6e98be0c4d3dbebaa73bb60143b3, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29786, Requested 1798. Please try again in 3.168s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28623, Requested 1798. Please try again in 842ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_3d7bc43f2dd841d6aa47ea7425dbd882, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28623, Requested 1798. Please try again in 842ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+ERROR    livekit.agents:log.py:22 Error in _llm_inference_task
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 219, in _main_task
+    return await self._run()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/inference/llm.py", line 407, in _run
+    raise APIStatusError(
+livekit.agents._exceptions.APIStatusError: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29308, Requested 1798. Please try again in 2.212s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_cb4688fc840b4359a0890922bbc108a3, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29308, Requested 1798. Please try again in 2.212s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/utils/log.py", line 17, in async_fn_logs
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py", line 71, in async_wrapper
+    return await func(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/generation.py", line 144, in _llm_inference_task
+    async for chunk in llm_node:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/agent.py", line 456, in llm_node
+    async for chunk in stream:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 381, in __anext__
+    raise exc  # noqa: B904
+    ^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 194, in _traceable_main_task
+    await self._main_task()
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 235, in _main_task
+    raise APIConnectionError(
+livekit.agents._exceptions.APIConnectionError: failed to generate LLM completion after 4 attempts
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29189, Requested 1810. Please try again in 1.998s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_d8f2550750054f21a44cff888faf680f, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29189, Requested 1810. Please try again in 1.998s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1810. Please try again in 3.62s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_84e3f78d9e574764b03f87b11a4cab96, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1810. Please try again in 3.62s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1810. Please try again in 3.62s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_a470344baf1e47ddbb6e223107aa0ff1, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1810. Please try again in 3.62s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+ERROR    livekit.agents:log.py:22 Error in _llm_inference_task
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 219, in _main_task
+    return await self._run()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/inference/llm.py", line 407, in _run
+    raise APIStatusError(
+livekit.agents._exceptions.APIStatusError: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29339, Requested 1810. Please try again in 2.298s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_50900b625e6c4e0fb679986e01243a6b, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29339, Requested 1810. Please try again in 2.298s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/utils/log.py", line 17, in async_fn_logs
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py", line 71, in async_wrapper
+    return await func(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/generation.py", line 144, in _llm_inference_task
+    async for chunk in llm_node:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/agent.py", line 456, in llm_node
+    async for chunk in stream:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 381, in __anext__
+    raise exc  # noqa: B904
+    ^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 194, in _traceable_main_task
+    await self._main_task()
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 235, in _main_task
+    raise APIConnectionError(
+livekit.agents._exceptions.APIConnectionError: failed to generate LLM completion after 4 attempts
+_____________ test_conversation_scenario[hoeflich_aber_nein_klar] ______________
+[gw0] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'User ist höflich aber signalisiert klar kein Interesse', 'expected_outcome': 'not_qualified', 'expected_tool_call': 'mark_not_qualified', 'id': 'hoeflich_aber_nein_klar', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x10ee69050>, <livekit.plugins.openai.llm.LLM object at 0x10f8f0750>)
+kwargs = {'intent': 'KI-Disclosure, Verständnis zeigen, kurz Aufwand als minimal darstellen (kostenlose Registrierung), nicht pushen'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message shows understanding and is polite, but it does not include any KI-disclosure, nor does it mention the minimal effort or free registration. It also does not push the user, but the lack of the other elements means it does not fully fulfill the intent.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Versteh ich, das passt dann aktuell nicht — vielen Dank für Ihre Zeit, einen schönen Tag noch.'], 'metrics': {'started_speaking_at': 1777491362.1300852, 'stopped_speaking_at': 1777491363.447405, 'llm_node_ttft': 5.084582792012952, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+E               [1] FunctionCallEvent(item={'arguments': '{"reason":"kein Interesse"}', 'name': 'mark_not_qualified'})
+E               [2] FunctionCallOutputEvent(item={'name': 'mark_not_qualified', 'output': 'Marked not qualified. Continue to graceful exit.', 'is_error': False})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29330, Requested 1792. Please try again in 2.244s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_d2deb35cff184587be12ee4ada333e3a, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29330, Requested 1792. Please try again in 2.244s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29162, Requested 1792. Please try again in 1.908s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_62d3f708980e48d981f09cd3f3153e64, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29162, Requested 1792. Please try again in 1.908s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1831. Please try again in 3.662s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_54341ac42d5747428dbed2d5ec45381c, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1831. Please try again in 3.662s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1831. Please try again in 3.662s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_0cb5b6ec65cc4f18874f817e0fde1f41, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1831. Please try again in 3.662s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29687, Requested 1831. Please try again in 3.036s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_d33bc9e3659345dd8765da95e174b286, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29687, Requested 1831. Please try again in 3.036s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+ERROR    livekit.agents:log.py:22 Error in _llm_inference_task
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 219, in _main_task
+    return await self._run()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/inference/llm.py", line 407, in _run
+    raise APIStatusError(
+livekit.agents._exceptions.APIStatusError: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28591, Requested 1831. Please try again in 844ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_975c5813f82a431d98501d36a08bce28, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28591, Requested 1831. Please try again in 844ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/utils/log.py", line 17, in async_fn_logs
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py", line 71, in async_wrapper
+    return await func(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/generation.py", line 144, in _llm_inference_task
+    async for chunk in llm_node:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/agent.py", line 456, in llm_node
+    async for chunk in stream:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 381, in __anext__
+    raise exc  # noqa: B904
+    ^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 194, in _traceable_main_task
+    await self._main_task()
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 235, in _main_task
+    raise APIConnectionError(
+livekit.agents._exceptions.APIConnectionError: failed to generate LLM completion after 4 attempts
+___________ test_conversation_scenario[vertrag_sofort_abschliessen] ____________
+[gw1] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'User will sofort einen verbindlichen Vertrag abschließen', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'vertrag_sofort_abschliessen', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x10cc756d0>, <livekit.plugins.openai.llm.LLM object at 0x10dba8d50>)
+kwargs = {'intent': 'KI-Disclosure, Begeisterung anerkennen, klar kommunizieren dass Vertragsabschluss nicht per Telefon möglich ist, E-Mail-Registrierung als nächsten Schritt anbieten'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message acknowledges being an AI and mentions that the contract is not concluded until active selling, but it does not clearly communicate that a contract conclusion is not possible by phone. It also does not explicitly recognize enthusiasm or clearly offer email registration as the next step; it only asks if it can send info by email, which is less direct than offering email registration as the next step.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Kurzer Hinweis vorab: ich bin eine KI vom Fachwelt Verlag, das Gespräch wird zur Qualitätssicherung aufgezeichnet. Die Vorab-Registrierung für Ihren Marketpleis-Start ist kostenlos, ein Vertrag kommt erst zustande, wenn Sie aktiv verkaufen — Details schickt das Team schriftlich. Darf ich Ihnen einfach die Infos per E-Mail zusenden?'], 'metrics': {'started_speaking_at': 1777491371.046164, 'stopped_speaking_at': 1777491372.049626, 'llm_node_ttft': 1.4047235829930287, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+___________ test_conversation_scenario[rueckruf_konkreter_zeitpunkt] ___________
+[gw0] darwin -- Python 3.11.14 /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+
+scenario = {'description': 'User will Rückruf mit sehr konkretem Zeitpunkt', 'expected_outcome': 'callback', 'expected_tool_call': 'schedule_callback', 'id': 'rueckruf_konkreter_zeitpunkt', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+>                   pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+E                   Failed: Turn 1: keine assistant-message — events=[]
+
+tests/test_conversations.py:102: Failed
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1793. Please try again in 3.586s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_2f88e40b7f93457aaac06969bf6229b1, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1793. Please try again in 3.586s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1793. Please try again in 3.586s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_41d4ae457f6f499d8b696bba345515ca, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1793. Please try again in 3.586s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1793. Please try again in 3.586s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_b6e74524e70c49dea53e31f88c893089, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 30000, Requested 1793. Please try again in 3.586s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+ERROR    livekit.agents:log.py:22 Error in _llm_inference_task
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 219, in _main_task
+    return await self._run()
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/inference/llm.py", line 407, in _run
+    raise APIStatusError(
+livekit.agents._exceptions.APIStatusError: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29556, Requested 1793. Please try again in 2.698s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_7d0084ca0f2b4fdfa4588b48692adeee, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29556, Requested 1793. Please try again in 2.698s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/utils/log.py", line 17, in async_fn_logs
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py", line 71, in async_wrapper
+    return await func(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/generation.py", line 144, in _llm_inference_task
+    async for chunk in llm_node:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/voice/agent.py", line 456, in llm_node
+    async for chunk in stream:
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 381, in __anext__
+    raise exc  # noqa: B904
+    ^^^^^^^^^
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 194, in _traceable_main_task
+    await self._main_task()
+  File "/Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/lib/python3.11/site-packages/livekit/agents/llm/llm.py", line 235, in _main_task
+    raise APIConnectionError(
+livekit.agents._exceptions.APIConnectionError: failed to generate LLM completion after 4 attempts
+=========================== short test summary info ============================
+FAILED tests/test_conversations.py::test_conversation_scenario[rueckruf_unklarer_zeitpunkt]
+FAILED tests/test_conversations.py::test_conversation_scenario[falsche_person_sekretaerin]
+FAILED tests/test_conversations.py::test_conversation_scenario[sprach_code_switch_englisch]
+FAILED tests/test_conversations.py::test_conversation_scenario[ueber_engagiert_alles_wissen]
+FAILED tests/test_conversations.py::test_conversation_scenario[technikfeindlich_robogespraech]
+FAILED tests/test_conversations.py::test_conversation_scenario[aggressiv_frustriert_haeufen]
+FAILED tests/test_conversations.py::test_conversation_scenario[hintergrundlaerm_schlechte_verbindung]
+FAILED tests/test_conversations.py::test_conversation_scenario[email_tippfehler_korrektur]
+FAILED tests/test_conversations.py::test_conversation_scenario[unmoeglich_100_leads_garantie]
+FAILED tests/test_conversations.py::test_conversation_scenario[eiliger_geschaeftsfuehrer_30_sekunden]
+FAILED tests/test_conversations.py::test_conversation_scenario[korrigiert_sich_mid_sentence]
+FAILED tests/test_conversations.py::test_conversation_scenario[dsgvo_profi_ai_act]
+FAILED tests/test_conversations.py::test_conversation_scenario[privatperson_irrtuemlicherweise_gelistet]
+FAILED tests/test_conversations.py::test_conversation_scenario[sofort_kaufen_zu_schnell]
+FAILED tests/test_conversations.py::test_conversation_scenario[bestandskunde_kennt_fachwelt]
+FAILED tests/test_conversations.py::test_conversation_scenario[konkurrenzvergleich_wer_liefert_was]
+FAILED tests/test_conversations.py::test_conversation_scenario[alles_per_post_kein_email]
+FAILED tests/test_conversations.py::test_conversation_scenario[dialektaler_sueddeutscher]
+FAILED tests/test_conversations.py::test_conversation_scenario[stiller_einsilbiger_gesprachspartner]
+FAILED tests/test_conversations.py::test_conversation_scenario[bestandskunde_beschwerde]
+FAILED tests/test_conversations.py::test_conversation_scenario[konkurrenz_preis_vergleich]
+FAILED tests/test_conversations.py::test_conversation_scenario[zehn_referenzen_forderung]
+FAILED tests/test_conversations.py::test_conversation_scenario[hoeflich_aber_nein_klar]
+FAILED tests/test_conversations.py::test_conversation_scenario[vertrag_sofort_abschliessen]
+FAILED tests/test_conversations.py::test_conversation_scenario[rueckruf_konkreter_zeitpunkt]
+=================== 25 failed, 3 passed in 73.26s (0:01:13) ====================
