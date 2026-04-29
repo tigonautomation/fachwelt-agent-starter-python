@@ -22,8 +22,8 @@ load_dotenv(".env.local")
 
 AGENT_MODEL = "openai/gpt-4.1"
 
-# Phonio-style ElevenLabs config — eleven_turbo_v2_5 for sub-300ms TTFA
-ELEVENLABS_MODEL = "eleven_turbo_v2_5"
+# Quality over latency — multilingual_v2 hat deutlich natürlichere DE-Prosodie als turbo
+ELEVENLABS_MODEL = "eleven_multilingual_v2"
 
 # A/B voices — uncomment one. Leonie is the Phonio default.
 TTS_VOICE_ID = "uvysWDLbKpA4XvpD3GI6"  # Leonie (Phonio)
@@ -32,11 +32,11 @@ TTS_VOICE_ID = "uvysWDLbKpA4XvpD3GI6"  # Leonie (Phonio)
 
 # Reverse-engineered Phonio voice settings (vault research 2026-04-20)
 PHONIO_VOICE_SETTINGS = elevenlabs.VoiceSettings(
-    stability=0.5,
-    similarity_boost=0.75,
-    style=0.0,
-    use_speaker_boost=False,
-    speed=1.1,
+    stability=0.45,
+    similarity_boost=0.80,
+    style=0.15,
+    use_speaker_boost=True,
+    speed=1.0,
 )
 
 # Pronunciation dictionary for German + English loanwords (Marketplace, B2B, KI, URL, fachwelt.de)
@@ -47,8 +47,8 @@ FACHWELT_PRONUNCIATION_DICT = [
     )
 ]
 
-# First chunk smaller for faster TTFA, rest default for quality
-PHONIO_CHUNK_SCHEDULE = [80, 160, 250, 290]
+# Größere Chunks = fließendere Sprache, weniger Mini-Pausen zwischen Sätzen
+PHONIO_CHUNK_SCHEDULE = [160, 250, 350]
 
 FACHWELT_PROMPT = """# Fachwelt Marketplace — Vorqualifizierungs-Agent
 
@@ -199,6 +199,7 @@ async def fachwelt_agent(ctx: JobContext):
             model=ELEVENLABS_MODEL,
             voice_settings=PHONIO_VOICE_SETTINGS,
             language="de",
+            auto_mode=False,
             chunk_length_schedule=PHONIO_CHUNK_SCHEDULE,
             pronunciation_dictionary_locators=FACHWELT_PRONUNCIATION_DICT,
         ),
