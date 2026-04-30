@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import sys
 from contextvars import ContextVar
 from pathlib import Path
@@ -96,6 +97,19 @@ async def opener_audio_frames() -> AsyncIterator[rtc.AudioFrame]:
 
 
 AGENT_MODEL = "gpt-4.1"
+
+
+def _build_llm() -> openai.LLM:
+    azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+    if azure_endpoint:
+        return openai.LLM.with_azure(
+            model=AGENT_MODEL,
+            azure_endpoint=azure_endpoint,
+            azure_deployment=os.environ["AZURE_OPENAI_DEPLOYMENT"],
+            api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-10-21"),
+            api_key=os.environ["AZURE_OPENAI_API_KEY"],
+        )
+    return openai.LLM(model=AGENT_MODEL)
 
 # Quality over latency — multilingual_v2 hat deutlich natürlichere DE-Prosodie als turbo
 ELEVENLABS_MODEL = "eleven_multilingual_v2"
@@ -365,7 +379,7 @@ async def fachwelt_agent(ctx: JobContext):
             language="de",
             base_url="https://api.eu.deepgram.com/v1/listen",
         ),
-        llm=openai.LLM(model=AGENT_MODEL),
+        llm=_build_llm(),
         tts=elevenlabs.TTS(
             voice_id=TTS_VOICE_ID,
             model=ELEVENLABS_MODEL,
