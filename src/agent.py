@@ -430,17 +430,49 @@ async def fachwelt_agent(ctx: JobContext):
     _active_sessions += 1
     log_event(call_id, "call_started", room=ctx.room.name)
 
+    # Connect first so room.metadata (set by the dashboard token route) is
+    # available before we build the session and assistant.
+    await ctx.connect()
+
+    config_id: str | None = None
+    raw_metadata = getattr(ctx.room, "metadata", None) or ""
+    if raw_metadata:
+        try:
+            import json as _json
+
+            parsed = _json.loads(raw_metadata)
+            if isinstance(parsed, dict):
+                config_id = parsed.get("configId") or parsed.get("config_id")
+        except ValueError:
+            log_event(call_id, "room_metadata_parse_failed", raw=str(raw_metadata)[:200])
+
+    runtime_cfg: AgentRuntimeConfig = await load_runtime_config(
+        config_id,
+        default_system_prompt=FACHWELT_PROMPT,
+        default_opener_text=OPENER_TEXT,
+        default_silence_reprompt_text=SILENCE_REPROMPT_TEXT,
+    )
+    log_event(
+        call_id,
+        "runtime_config_loaded",
+        config_id=runtime_cfg.config_id,
+        config_name=runtime_cfg.name,
+        temperature=runtime_cfg.temperature,
+        voice_speed=runtime_cfg.voice_speed,
+        max_call_duration_s=runtime_cfg.max_call_duration_s,
+    )
+
     session = AgentSession(
         stt=deepgram.STT(
             model="nova-3",
             language="de",
             base_url="https://api.eu.deepgram.com/v1/listen",
         ),
-        llm=_build_llm(),
+        llm=_build_llm(temperature=runtime_cfg.temperature),
         tts=elevenlabs.TTS(
             voice_id=TTS_VOICE_ID,
             model=ELEVENLABS_MODEL,
-            voice_settings=PHONIO_VOICE_SETTINGS,
+            voice_settings=_voice_settings(speed=runtime_cfg.voice_speed),
             language="de",
             auto_mode=False,
             chunk_length_schedule=PHONIO_CHUNK_SCHEDULE,
@@ -493,7 +525,7 @@ async def fachwelt_agent(ctx: JobContext):
 
     try:
         await session.start(
-            agent=FachweltAssistant(),
+            agent=FachweltAssistant(instructions=runtime_cfg.system_prompt),
             room=ctx.room,
             room_options=room_io.RoomOptions(
                 audio_input=room_io.AudioInputOptions(
@@ -504,34 +536,36 @@ async def fachwelt_agent(ctx: JobContext):
             ),
         )
 
-        await ctx.connect()
-
         # Seed the conversation — opener as pre-rendered audio for 100% consistency.
         # Pre-flight validate the MP3 because LK Agents swallows audio-iterator
         # exceptions via @log_exceptions; a corrupted/missing file would silently
         # produce zero audio and the user hears "Hallo? Hallo?". (A3 silent-fail fix)
+        # Skip pre-rendered audio when a custom opener is configured — they won't match.
         opener_audio = None
-        try:
-            if not OPENER_AUDIO_PATH.exists():
-                raise FileNotFoundError(f"opener missing at {OPENER_AUDIO_PATH}")
-            _validate = av.open(str(OPENER_AUDIO_PATH))
-            _validate.close()
-            opener_audio = opener_audio_frames()
-        except Exception as e:
-            log_event(
-                call_id,
-                "opener_audio_preflight_failed",
-                error_type=type(e).__name__,
-                error=str(e),
-            )
-            summary.record_error(source="opener_audio", error=str(e))
+        opener_text = runtime_cfg.opener_text
+        opener_is_default = opener_text.strip() == OPENER_TEXT.strip()
+        if opener_is_default:
+            try:
+                if not OPENER_AUDIO_PATH.exists():
+                    raise FileNotFoundError(f"opener missing at {OPENER_AUDIO_PATH}")
+                _validate = av.open(str(OPENER_AUDIO_PATH))
+                _validate.close()
+                opener_audio = opener_audio_frames()
+            except Exception as e:
+                log_event(
+                    call_id,
+                    "opener_audio_preflight_failed",
+                    error_type=type(e).__name__,
+                    error=str(e),
+                )
+                summary.record_error(source="opener_audio", error=str(e))
 
         if opener_audio is not None:
-            await session.say(OPENER_TEXT, audio=opener_audio, allow_interruptions=False)
+            await session.say(opener_text, audio=opener_audio, allow_interruptions=False)
         else:
             # Live-TTS fallback. Slightly slower first byte and prosody may differ,
             # but the call still has audio.
-            await session.say(OPENER_TEXT, allow_interruptions=False)
+            await session.say(opener_text, allow_interruptions=False)
 
         # Watchdog scoped to mid-conversation TTS hangs. The pre-rendered opener
         # is 12.4s of legitimate playback, which would false-positive the 10s
@@ -541,7 +575,8 @@ async def fachwelt_agent(ctx: JobContext):
         # C13 — kick off silence watcher only after opener completes so
         # the threshold doesn't include opener playback time.
         silence_task = asyncio.create_task(
-            _silence_watch(session, call_id, summary), name="silence-watch"
+            _silence_watch(session, call_id, summary, runtime_cfg.silence_reprompt_text),
+            name="silence-watch",
         )
     except Exception as e:
         summary.record_error(source="entrypoint", error=str(e))
