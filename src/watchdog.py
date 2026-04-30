@@ -29,6 +29,7 @@ from observability import CallSummary, log_event
 
 SPEAKING_STUCK_THRESHOLD_S = 10.0
 LLM_STUCK_THRESHOLD_S = 15.0
+POLL_INTERVAL_S = 0.5
 RECOVERY_UTTERANCE = (
     "Entschuldigung, ich hatte gerade eine kurze Verbindungsstörung. "
     "Ich rufe Sie gleich nochmal zurück. Auf Wiederhören."
@@ -86,7 +87,7 @@ class CallWatchdog:
     async def _poll_loop(self) -> None:
         try:
             while not self._closed.is_set():
-                await asyncio.sleep(1.0)
+                await asyncio.sleep(POLL_INTERVAL_S)
                 if self._state.triggered:
                     continue
                 self._check_speaking_stuck()

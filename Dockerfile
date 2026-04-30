@@ -74,6 +74,11 @@ WORKDIR /app
 # This improves security by not running as root
 USER appuser
 
+# Health endpoint exposed for Coolify/k8s liveness probes (F30).
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health',timeout=3).status==200 else 1)" || exit 1
+
 # Run the AgentServer using UV
 # UV will activate the virtual environment and run the agent.
 # The "start" command tells the AgentServer to connect to LiveKit and begin waiting for jobs.

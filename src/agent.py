@@ -273,16 +273,76 @@ class FachweltAssistant(Agent):
 server = AgentServer()
 
 
+# C13 — if the user is silent for this long after the opener finishes, prompt
+# them once. After SILENCE_HANGUP_THRESHOLD_S more, give up and mark a callback.
+# Callers occasionally drop silently (no SIP BYE) — without this watchdog the
+# agent waits forever and the worker job is wasted.
+SILENCE_REPROMPT_THRESHOLD_S = 15.0
+SILENCE_HANGUP_THRESHOLD_S = 15.0
+SILENCE_REPROMPT_TEXT = (
+    "Sind Sie noch dran? Falls die Verbindung schlecht ist, "
+    "rufe ich gerne nochmal an."
+)
+
+
 def prewarm(proc: JobProcess):
+    """Per-process warmup. Loads the VAD model so the first call doesn't pay for it."""
     proc.userdata["vad"] = silero.VAD.load()
 
 
 server.setup_fnc = prewarm
 
 
+async def _silence_watch(session: AgentSession, call_id: str, summary: CallSummary) -> None:
+    """C13 — re-prompt once if the user never responds, then bail with a callback.
+
+    We only consider "silent" when the agent is idle/listening AND the user is
+    not currently speaking. If the user does speak, the regular conversation
+    flow runs and this task naturally never fires.
+    """
+    try:
+        await asyncio.sleep(SILENCE_REPROMPT_THRESHOLD_S)
+        if session.user_state == "speaking" or session.agent_state == "speaking":
+            return
+        log_event(call_id, "silence_reprompt_after_opener")
+        await session.say(SILENCE_REPROMPT_TEXT, allow_interruptions=True)
+        await asyncio.sleep(SILENCE_HANGUP_THRESHOLD_S)
+        if session.user_state == "speaking" or session.agent_state == "speaking":
+            return
+        log_event(call_id, "silence_hangup_no_response")
+        summary.final_state = "callback"
+        summary.final_reason = "no_response_after_opener"
+        fire_webhook(
+            call_id,
+            "callback",
+            {"reason": "no_response_after_opener"},
+            summary=summary,
+        )
+        await session.aclose()
+    except asyncio.CancelledError:
+        pass
+
+
 @server.rtc_session()
 async def fachwelt_agent(ctx: JobContext):
-    ctx.log_context_fields = {"room": ctx.room.name}
+    """Per-call entrypoint. Wires call_id, watchdog, silence-watch, and cleanup."""
+    global _active_sessions, _health_runner
+
+    if _health_runner is None:
+        try:
+            _health_runner = await start_health_server(lambda: _active_sessions)
+        except OSError as e:
+            # Port already bound by a sibling JobProcess in the same worker.
+            # Log + carry on; one server per worker is enough for liveness probes.
+            logger.warning(f"health server bind skipped: {e}")
+            _health_runner = "shared"  # sentinel to skip future attempts
+
+    call_id = new_call_id(ctx.room.name)
+    ctx.log_context_fields = {"room": ctx.room.name, "call_id": call_id}
+    summary = CallSummary(call_id=call_id, room=ctx.room.name)
+    _current_call.set((call_id, summary))
+    _active_sessions += 1
+    log_event(call_id, "call_started", room=ctx.room.name)
 
     session = AgentSession(
         stt=deepgram.STT(model="nova-3", language="de"),
@@ -305,43 +365,91 @@ async def fachwelt_agent(ctx: JobContext):
         min_interruption_duration=1.0,
     )
 
-    await session.start(
-        agent=FachweltAssistant(),
-        room=ctx.room,
-        room_options=room_io.RoomOptions(
-            audio_input=room_io.AudioInputOptions(
-                noise_cancellation=ai_coustics.audio_enhancement(
-                    model=ai_coustics.EnhancerModel.QUAIL_VF_L
+    # D21 — capture stream errors as structured events so the call summary
+    # can attribute drops to a specific subsystem (TTS / STT / LLM).
+    def _on_session_error(ev) -> None:  # noqa: ANN001 — LK ev type changes between minors
+        source = getattr(getattr(ev, "source", None), "label", "unknown")
+        err = getattr(ev, "error", ev)
+        summary.record_error(source=str(source), error=str(err))
+        log_event(call_id, "session_error", source=str(source), error=str(err))
+
+    def _on_user_input(ev) -> None:  # noqa: ANN001
+        if getattr(ev, "is_final", True):
+            summary.user_turns += 1
+
+    def _on_conversation_item(ev) -> None:  # noqa: ANN001
+        item = getattr(ev, "item", None)
+        if item is not None and getattr(item, "role", None) == "assistant":
+            summary.agent_turns += 1
+
+    session.on("error", _on_session_error)
+    session.on("user_input_transcribed", _on_user_input)
+    session.on("conversation_item_added", _on_conversation_item)
+
+    watchdog = CallWatchdog(session=session, call_id=call_id, summary=summary)
+    silence_task: asyncio.Task[None] | None = None
+
+    try:
+        await session.start(
+            agent=FachweltAssistant(),
+            room=ctx.room,
+            room_options=room_io.RoomOptions(
+                audio_input=room_io.AudioInputOptions(
+                    noise_cancellation=ai_coustics.audio_enhancement(
+                        model=ai_coustics.EnhancerModel.QUAIL_VF_L
+                    ),
                 ),
             ),
-        ),
-    )
-
-    await ctx.connect()
-
-    # Seed the conversation — opener as pre-rendered audio for 100% consistency.
-    # Pre-flight validate the MP3 because LK Agents swallows audio-iterator
-    # exceptions via @log_exceptions; a corrupted/missing file would silently
-    # produce zero audio and the user hears "Hallo? Hallo?". (A3 silent-fail fix)
-    opener_audio = None
-    try:
-        if not OPENER_AUDIO_PATH.exists():
-            raise FileNotFoundError(f"opener missing at {OPENER_AUDIO_PATH}")
-        _validate = av.open(str(OPENER_AUDIO_PATH))
-        _validate.close()
-        opener_audio = opener_audio_frames()
-    except Exception as e:
-        logger.error(
-            "opener_audio_preflight_failed_falling_back_to_live_tts",
-            extra={"error_type": type(e).__name__, "error": str(e)},
         )
 
-    if opener_audio is not None:
-        await session.say(OPENER_TEXT, audio=opener_audio, allow_interruptions=False)
-    else:
-        # Live-TTS fallback. Slightly slower first byte and prosody may differ,
-        # but the call still has audio.
-        await session.say(OPENER_TEXT, allow_interruptions=False)
+        watchdog.start()
+        await ctx.connect()
+
+        # Seed the conversation — opener as pre-rendered audio for 100% consistency.
+        # Pre-flight validate the MP3 because LK Agents swallows audio-iterator
+        # exceptions via @log_exceptions; a corrupted/missing file would silently
+        # produce zero audio and the user hears "Hallo? Hallo?". (A3 silent-fail fix)
+        opener_audio = None
+        try:
+            if not OPENER_AUDIO_PATH.exists():
+                raise FileNotFoundError(f"opener missing at {OPENER_AUDIO_PATH}")
+            _validate = av.open(str(OPENER_AUDIO_PATH))
+            _validate.close()
+            opener_audio = opener_audio_frames()
+        except Exception as e:
+            log_event(
+                call_id,
+                "opener_audio_preflight_failed",
+                error_type=type(e).__name__,
+                error=str(e),
+            )
+            summary.record_error(source="opener_audio", error=str(e))
+
+        if opener_audio is not None:
+            await session.say(OPENER_TEXT, audio=opener_audio, allow_interruptions=False)
+        else:
+            # Live-TTS fallback. Slightly slower first byte and prosody may differ,
+            # but the call still has audio.
+            await session.say(OPENER_TEXT, allow_interruptions=False)
+
+        # C13 — kick off silence watcher only after opener completes so
+        # the threshold doesn't include opener playback time.
+        silence_task = asyncio.create_task(
+            _silence_watch(session, call_id, summary), name="silence-watch"
+        )
+    except Exception as e:
+        summary.record_error(source="entrypoint", error=str(e))
+        log_event(call_id, "entrypoint_exception", error=str(e), error_type=type(e).__name__)
+        raise
+    finally:
+        if silence_task is not None and not silence_task.done():
+            silence_task.cancel()
+        watchdog.stop()
+        if not summary.final_state or summary.final_state == "unknown":
+            # Call ended without a tool/watchdog setting state — likely user hangup.
+            summary.final_state = "user_hangup"
+        summary.emit()
+        _active_sessions = max(0, _active_sessions - 1)
 
 
 if __name__ == "__main__":
