@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import sys
+import time
 from contextvars import ContextVar
 from pathlib import Path
 from typing import AsyncIterator
@@ -96,7 +97,7 @@ async def opener_audio_frames() -> AsyncIterator[rtc.AudioFrame]:
         container.close()
 
 
-AGENT_MODEL = "gpt-5.5"
+AGENT_MODEL = "gpt-4.1"
 
 
 def _build_llm() -> openai.LLM:
@@ -323,31 +324,57 @@ server.setup_fnc = prewarm
 
 
 async def _silence_watch(session: AgentSession, call_id: str, summary: CallSummary) -> None:
-    """C13 — re-prompt once if the user never responds, then bail with a callback.
+    """C13 — re-prompt once on real silence, hangup if user never engages.
 
-    We only consider "silent" when the agent is idle/listening AND the user is
-    not currently speaking. If the user does speak, the regular conversation
-    flow runs and this task naturally never fires.
+    "Real silence" = neither agent nor user has been speaking for the threshold
+    window. The previous version used flat asyncio.sleep() and counted agent
+    speaking-time as silence, causing false hangups while the agent was still
+    talking. Now we poll user_state/agent_state and reset last_activity on every
+    speaking observation. First user turn cancels the watcher entirely.
     """
+    poll = 0.5
+    last_activity = time.time()
+    user_engaged = False
+    reprompted = False
+
     try:
-        await asyncio.sleep(SILENCE_REPROMPT_THRESHOLD_S)
-        if session.user_state == "speaking" or session.agent_state == "speaking":
+        while True:
+            await asyncio.sleep(poll)
+            now = time.time()
+
+            if session.user_state == "speaking":
+                user_engaged = True
+                return  # conversation flow takes over
+            if session.agent_state == "speaking":
+                last_activity = now
+                continue
+
+            idle = now - last_activity
+
+            if not reprompted:
+                if idle < SILENCE_REPROMPT_THRESHOLD_S:
+                    continue
+                log_event(call_id, "silence_reprompt_after_opener")
+                await session.say(SILENCE_REPROMPT_TEXT, allow_interruptions=True)
+                reprompted = True
+                last_activity = time.time()
+                continue
+
+            if idle < SILENCE_HANGUP_THRESHOLD_S:
+                continue
+            if user_engaged:
+                return
+            log_event(call_id, "silence_hangup_no_response")
+            summary.final_state = "callback"
+            summary.final_reason = "no_response_after_opener"
+            fire_webhook(
+                call_id,
+                "callback",
+                {"reason": "no_response_after_opener"},
+                summary=summary,
+            )
+            await session.aclose()
             return
-        log_event(call_id, "silence_reprompt_after_opener")
-        await session.say(SILENCE_REPROMPT_TEXT, allow_interruptions=True)
-        await asyncio.sleep(SILENCE_HANGUP_THRESHOLD_S)
-        if session.user_state == "speaking" or session.agent_state == "speaking":
-            return
-        log_event(call_id, "silence_hangup_no_response")
-        summary.final_state = "callback"
-        summary.final_reason = "no_response_after_opener"
-        fire_webhook(
-            call_id,
-            "callback",
-            {"reason": "no_response_after_opener"},
-            summary=summary,
-        )
-        await session.aclose()
     except asyncio.CancelledError:
         pass
     except RuntimeError as e:
