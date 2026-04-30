@@ -96,7 +96,7 @@ async def opener_audio_frames() -> AsyncIterator[rtc.AudioFrame]:
         container.close()
 
 
-AGENT_MODEL = "gpt-4.1"
+AGENT_MODEL = "gpt-5.5"
 
 
 def _build_llm() -> openai.LLM:
