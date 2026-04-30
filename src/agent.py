@@ -1,6 +1,10 @@
 import logging
+from pathlib import Path
+from typing import AsyncIterator
 
+import av
 from dotenv import load_dotenv
+from livekit import rtc
 from livekit.agents import (
     Agent,
     AgentServer,
@@ -10,36 +14,76 @@ from livekit.agents import (
     RunContext,
     cli,
     function_tool,
-    inference,
     room_io,
 )
-from livekit.plugins import ai_coustics, elevenlabs, silero
+from livekit.plugins import ai_coustics, deepgram, elevenlabs, openai, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 logger = logging.getLogger("agent")
 
 load_dotenv(".env.local")
 
-AGENT_MODEL = "openai/gpt-4.1"
+OPENER_AUDIO_PATH = Path(__file__).resolve().parent.parent / "assets" / "opener.mp3"
+OPENER_TEXT = (
+    "Guten Tag, hier ist Lisa vom Fachwelt Verlag. "
+    "Kurzer Hinweis: ich bin eine KI, das Gespräch wird "
+    "zur Qualitätssicherung aufgezeichnet. Wir bauen einen "
+    "Marktplatz für B2B-Hersteller — hätten Sie zwei Minuten?"
+)
+OPENER_SAMPLE_RATE = 24000
+
+
+async def opener_audio_frames() -> AsyncIterator[rtc.AudioFrame]:
+    """Decode the pre-rendered opener MP3 and yield rtc.AudioFrame chunks.
+
+    Bypasses live ElevenLabs TTS for the opener so every call sounds 100% identical
+    (no sampling variance). Dynamic replies still use live TTS.
+    """
+    if not OPENER_AUDIO_PATH.exists():
+        raise FileNotFoundError(f"Opener audio missing at {OPENER_AUDIO_PATH}")
+
+    container = av.open(str(OPENER_AUDIO_PATH))
+    try:
+        stream = container.streams.audio[0]
+        resampler = av.AudioResampler(format="s16", layout="mono", rate=OPENER_SAMPLE_RATE)
+        for packet in container.demux(stream):
+            for frame in packet.decode():
+                for resampled in resampler.resample(frame):
+                    pcm = resampled.to_ndarray()
+                    samples_per_channel = pcm.shape[-1]
+                    yield rtc.AudioFrame(
+                        data=pcm.astype("int16").tobytes(),
+                        sample_rate=OPENER_SAMPLE_RATE,
+                        num_channels=1,
+                        samples_per_channel=samples_per_channel,
+                    )
+        for resampled in resampler.resample(None) or []:
+            pcm = resampled.to_ndarray()
+            samples_per_channel = pcm.shape[-1]
+            yield rtc.AudioFrame(
+                data=pcm.astype("int16").tobytes(),
+                sample_rate=OPENER_SAMPLE_RATE,
+                num_channels=1,
+                samples_per_channel=samples_per_channel,
+            )
+    finally:
+        container.close()
+
+
+AGENT_MODEL = "gpt-4.1"
 
 # Quality over latency — multilingual_v2 hat deutlich natürlichere DE-Prosodie als turbo
 ELEVENLABS_MODEL = "eleven_multilingual_v2"
 
 # Voice-Library Recherche (Fonio.ai nutzt ElevenLabs DE-Voices wie Katja, Julia, Theres)
-# Johanna ist explizit als "Sales Outreach Specialist" gelabelt — exakt unser Use-Case
-TTS_VOICE_ID = "v3V1d2rk6528UrLKRuy8"  # Susi - Effortless and Confident (DE, conversational, Voice-Scout 2026-04-29 Pick)
-# TTS_VOICE_ID = "HHKcxM1mAt4nEB2ZjrRw"  # Johanna - Sales Outreach Specialist (alt, Iter 1-4)
-# TTS_VOICE_ID = "cllvQaMvj0ZKxH88HGEn"  # Gesa Tess - Trustworthy Host (conversational, pleasant)
-# TTS_VOICE_ID = "MGG5Irb57ATHvyIeTEYo"  # Maya - Supportive Agent (conversational, confident)
-# TTS_VOICE_ID = "0o46iPcQNHBZFpnxxQz5"  # Marion Mitte - Friendly, Warm & Fresh
-# TTS_VOICE_ID = "uvysWDLbKpA4XvpD3GI6"  # Leonie (alt)
-# TTS_VOICE_ID = "sgKauqXbUxSBZgugAiOl"  # Sina - middle-aged, casual
+TTS_VOICE_ID = "v3V1d2rk6528UrLKRuy8"  # Susi - Effortless and Confident (Voice-Scout 2026-04-29)
 
-# Voice-Scout 2026-04-29 Setting B (slower/more deliberate) — Susi tied at 95.6% Levenshtein, won ear-test
+# Voice-Scout 2026-04-29 Setting B — Susi tied at 95.6% Levenshtein, won ear-test.
+# Live-Validation 2026-04-30: stability 0.55 → 0.80 (Konsistenz), style 0.15 → 0.30 (etwas wärmer/freundlicher)
 PHONIO_VOICE_SETTINGS = elevenlabs.VoiceSettings(
-    stability=0.55,
+    stability=0.80,
     similarity_boost=0.80,
-    style=0.15,
+    style=0.30,
     use_speaker_boost=True,
     speed=0.95,
 )
@@ -96,8 +140,12 @@ Wenn etwas Spezifisches gefragt wird, das du nicht weißt: ehrlich sagen ("Das h
 - **Bei "Moment bitte"**: still bleiben, bis er weiterspricht.
 - **Bei "Wie bitte?"/"Wer sind Sie?"**: letzten Satz wortgleich, etwas langsamer wiederholen.
 
-## Aussprache (kritisch)
-- **"Marketplace"** → schreib's phonetisch als **"Marketpleis"** (englisch ausgesprochen, wie im Original). Niemals deutsch lesen lassen.
+## Aussprache (kritisch — strikt einhalten)
+- **"Marketplace" — NIEMALS so schreiben.** Schreib IMMER **"Marketpleis"** (phonetisch englisch). Beispiele:
+  - ❌ "unserem Marketplace" → ✅ "unserem Marketpleis"
+  - ❌ "der Fachwelt-Marketplace" → ✅ "der Fachwelt-Marketpleis"
+  - ❌ "auf dem Marketplace" → ✅ "auf dem Marketpleis"
+  - Diese Regel gilt für JEDE Erwähnung — auch in Aufzählungen, Nebensätzen, Wiederholungen.
 - **"fachwelt.de"** → "fachwelt punkt de"
 - **"fachweltmarketplace.de"** → "fachwelt-marketpleis punkt de"
 - **Jahreszahlen** ausgeschrieben: "zweitausendsechsundzwanzig"
@@ -196,8 +244,8 @@ async def fachwelt_agent(ctx: JobContext):
     ctx.log_context_fields = {"room": ctx.room.name}
 
     session = AgentSession(
-        stt=inference.STT(model="deepgram/nova-3", language="de"),
-        llm=inference.LLM(model=AGENT_MODEL),
+        stt=deepgram.STT(model="nova-3", language="de"),
+        llm=openai.LLM(model=AGENT_MODEL),
         tts=elevenlabs.TTS(
             voice_id=TTS_VOICE_ID,
             model=ELEVENLABS_MODEL,
@@ -205,7 +253,7 @@ async def fachwelt_agent(ctx: JobContext):
             language="de",
             auto_mode=False,
             chunk_length_schedule=PHONIO_CHUNK_SCHEDULE,
-            pronunciation_dictionary_locators=FACHWELT_PRONUNCIATION_DICT,
+            # pronunciation_dictionary_locators=FACHWELT_PRONUNCIATION_DICT,  # disabled — testing if aliases hurt prosody
         ),
         turn_detection=MultilingualModel(),
         vad=ctx.proc.userdata["vad"],
@@ -213,7 +261,7 @@ async def fachwelt_agent(ctx: JobContext):
         min_endpointing_delay=0.5,
         max_endpointing_delay=4.0,
         allow_interruptions=True,
-        min_interruption_duration=0.4,
+        min_interruption_duration=1.0,
     )
 
     await session.start(
@@ -230,10 +278,29 @@ async def fachwelt_agent(ctx: JobContext):
 
     await ctx.connect()
 
-    # Seed the conversation — opener that triggers Stage 1 reaction
-    await session.say(
-        "Guten Tag, hier ist Lisa vom Fachwelt Verlag. Hätten Sie kurz zwei Minuten?"
-    )
+    # Seed the conversation — opener as pre-rendered audio for 100% consistency.
+    # Pre-flight validate the MP3 because LK Agents swallows audio-iterator
+    # exceptions via @log_exceptions; a corrupted/missing file would silently
+    # produce zero audio and the user hears "Hallo? Hallo?". (A3 silent-fail fix)
+    opener_audio = None
+    try:
+        if not OPENER_AUDIO_PATH.exists():
+            raise FileNotFoundError(f"opener missing at {OPENER_AUDIO_PATH}")
+        _validate = av.open(str(OPENER_AUDIO_PATH))
+        _validate.close()
+        opener_audio = opener_audio_frames()
+    except Exception as e:
+        logger.error(
+            "opener_audio_preflight_failed_falling_back_to_live_tts",
+            extra={"error_type": type(e).__name__, "error": str(e)},
+        )
+
+    if opener_audio is not None:
+        await session.say(OPENER_TEXT, audio=opener_audio, allow_interruptions=False)
+    else:
+        # Live-TTS fallback. Slightly slower first byte and prosody may differ,
+        # but the call still has audio.
+        await session.say(OPENER_TEXT, allow_interruptions=False)
 
 
 if __name__ == "__main__":
