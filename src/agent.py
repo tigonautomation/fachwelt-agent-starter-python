@@ -417,7 +417,6 @@ async def fachwelt_agent(ctx: JobContext):
             ),
         )
 
-        watchdog.start()
         await ctx.connect()
 
         # Seed the conversation — opener as pre-rendered audio for 100% consistency.
@@ -446,6 +445,11 @@ async def fachwelt_agent(ctx: JobContext):
             # Live-TTS fallback. Slightly slower first byte and prosody may differ,
             # but the call still has audio.
             await session.say(OPENER_TEXT, allow_interruptions=False)
+
+        # Watchdog scoped to mid-conversation TTS hangs. The pre-rendered opener
+        # is 12.4s of legitimate playback, which would false-positive the 10s
+        # speaking-stuck timer. Arm only after opener completes.
+        watchdog.start()
 
         # C13 — kick off silence watcher only after opener completes so
         # the threshold doesn't include opener playback time.
