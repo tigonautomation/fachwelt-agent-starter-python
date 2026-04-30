@@ -27,7 +27,7 @@ from livekit.agents.voice.events import AgentStateChangedEvent, UserStateChanged
 
 from observability import CallSummary, log_event
 
-SPEAKING_STUCK_THRESHOLD_S = 10.0
+SPEAKING_STUCK_THRESHOLD_S = 20.0
 LLM_STUCK_THRESHOLD_S = 15.0
 POLL_INTERVAL_S = 0.5
 RECOVERY_UTTERANCE = (
