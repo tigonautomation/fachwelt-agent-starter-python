@@ -28,17 +28,16 @@ SCENARIOS = yaml.safe_load(SCENARIOS_FILE.read_text(encoding="utf-8"))
 
 
 def _agent_llm() -> llm.LLM:
-    return openai.LLM(model="gpt-4.1-mini")
+    # Full gpt-4.1 to match production agent.py — using mini in tests would
+    # measure a different model than the one Edon's customers actually talk to.
+    return openai.LLM(model="gpt-4.1")
 
 
 def _judge_llm() -> llm.LLM:
-    # gpt-4.1-mini — keeps cost low and matches the baseline pass-rate of
-    # the suite. Empirically, switching to full gpt-4.1 made the judge MORE
-    # strict and produced a *lower* pass rate, not higher; the conversation
-    # suite is intended as a prompt-iteration signal, not a launch gate.
-    # Real launch gate: deterministic test_agent.py + test_resilience.py +
-    # test_opener_audio.py (23 tests, all green).
-    return openai.LLM(model="gpt-4.1-mini")
+    # gpt-4.1 (full) judge for honest, consistent intent matching.
+    # Mini judge ignored the PASS-DEFAULT preamble and produced
+    # contradictory false-fails on consecutive runs of the same scenario.
+    return openai.LLM(model="gpt-4.1")
 
 
 def _first_assistant_message_index(events) -> int | None:

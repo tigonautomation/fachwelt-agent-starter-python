@@ -270,7 +270,22 @@ class FachweltAssistant(Agent):
         return "Marked not qualified. Continue to graceful exit."
 
 
-server = AgentServer()
+# Hard cap on simultaneous calls. Edon's outbound dialer realistically queues
+# 2-3 conversations at peak; 5 leaves headroom without exposing us to a
+# runaway pool that would burn API quota or starve LK Cloud capacity.
+# When `_active_sessions` hits this number, `_load_fn` returns 1.0 and LK
+# Agents stops accepting new jobs (the default load_threshold is 0.7).
+MAX_CONCURRENT_SESSIONS = 5
+
+
+def _load_fn() -> float:
+    return min(_active_sessions / MAX_CONCURRENT_SESSIONS, 1.0)
+
+
+server = AgentServer(
+    num_idle_processes=MAX_CONCURRENT_SESSIONS,
+    load_fnc=_load_fn,
+)
 
 
 # C13 — if the user is silent for this long after the opener finishes, prompt
