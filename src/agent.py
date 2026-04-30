@@ -1,4 +1,7 @@
+import asyncio
 import logging
+import sys
+from contextvars import ContextVar
 from pathlib import Path
 from typing import AsyncIterator
 
@@ -19,9 +22,31 @@ from livekit.agents import (
 from livekit.plugins import ai_coustics, deepgram, elevenlabs, openai, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
+from health import start_health_server
+from observability import CallSummary, fire_webhook, log_event, new_call_id
+from watchdog import CallWatchdog
+
+# F29 — flush stdout per record so Coolify/k8s log drivers receive partial-line
+# output without buffering. PYTHONUNBUFFERED=1 in the Dockerfile is the
+# belt-and-suspenders backup.
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    force=True,
+)
 logger = logging.getLogger("agent")
 
 load_dotenv(".env.local")
+
+# Per-call context shared by the FachweltAssistant tools so they can emit
+# structured events tagged with the right call_id without threading the
+# context through every function signature.
+_current_call: ContextVar[tuple[str, CallSummary] | None] = ContextVar(
+    "_current_call", default=None
+)
+_active_sessions: int = 0
+_health_runner = None
 
 OPENER_AUDIO_PATH = Path(__file__).resolve().parent.parent / "assets" / "opener.mp3"
 OPENER_TEXT = (
@@ -188,6 +213,25 @@ Frag: "Darf ich Ihnen die Details einfach per E-Mail schicken?" — das ist der 
 """
 
 
+def _record_tool_outcome(state: str, reason: str, **fields: object) -> None:
+    """Stamp the call summary + emit a structured event + fire the CRM webhook.
+
+    Tools must return immediately so the agent can speak the goodbye line, so
+    the webhook is dispatched as a background task. The summary record makes
+    the per-call disposition observable even if the webhook is spooled.
+    """
+    ctx = _current_call.get()
+    if ctx is None:
+        # Tests instantiate the agent without an rtc_session — no call context.
+        logger.info(f"[{state.upper()}] reason={reason} fields={fields}")
+        return
+    call_id, summary = ctx
+    summary.final_state = state
+    summary.final_reason = reason
+    log_event(call_id, f"tool_{state}", reason=reason, **fields)
+    fire_webhook(call_id, state, {"reason": reason, **fields}, summary=summary)
+
+
 class FachweltAssistant(Agent):
     def __init__(self) -> None:
         super().__init__(instructions=FACHWELT_PROMPT)
@@ -201,8 +245,7 @@ class FachweltAssistant(Agent):
         Args:
             email: The confirmed email address (e.g. max@firma.de)
         """
-        logger.info(f"[QUALIFIED] email={email}")
-        # TODO: POST to webhook (n8n) for email send + CRM update
+        _record_tool_outcome("qualified", reason="email_confirmed", email=email)
         return "Email queued. Continue to graceful exit."
 
     @function_tool
@@ -213,8 +256,7 @@ class FachweltAssistant(Agent):
             when: Caller-provided time hint (e.g. "morgen Nachmittag", "nächste Woche Dienstag")
             notes: Optional additional context from the conversation
         """
-        logger.info(f"[CALLBACK] when={when} notes={notes}")
-        # TODO: POST to webhook for calendar/CRM
+        _record_tool_outcome("callback", reason=when, notes=notes)
         return "Callback noted. Continue to graceful exit."
 
     @function_tool
@@ -224,8 +266,7 @@ class FachweltAssistant(Agent):
         Args:
             reason: Short reason (e.g. "kein B2B", "kein Interesse", "falsche Person")
         """
-        logger.info(f"[NOT_QUALIFIED] reason={reason}")
-        # TODO: POST to webhook for CRM
+        _record_tool_outcome("not_qualified", reason=reason)
         return "Marked not qualified. Continue to graceful exit."
 
 
