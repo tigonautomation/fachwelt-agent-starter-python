@@ -1,0 +1,19 @@
+# LiveKit Cloud Agents deploy config.
+#
+# Deploy:
+#   lk agent create
+#   lk agent deploy
+#   lk agent secrets set DEEPGRAM_API_KEY=... OPENAI_API_KEY=... ELEVEN_API_KEY=... \
+#     AZURE_OPENAI_API_KEY=... AZURE_OPENAI_ENDPOINT=... AZURE_OPENAI_DEPLOYMENT=... \
+#     DASHBOARD_API_BASE=https://fachwelt-outbound-staging.surfingtigon.com \
+#     DASHBOARD_API_TOKEN=...
+
+[project]
+subdomain = "fachwelt-outbound"
+
+[agent]
+id = "fachwelt-outbound"
+
+[build]
+runtime = "python"
+entry = "src/agent.py"
