@@ -392,8 +392,8 @@ async def fachwelt_agent(ctx: JobContext):
         turn_detection=MultilingualModel(),
         vad=ctx.proc.userdata["vad"],
         preemptive_generation=True,
-        min_endpointing_delay=0.5,
-        max_endpointing_delay=4.0,
+        min_endpointing_delay=0.3,
+        max_endpointing_delay=2.0,
         allow_interruptions=True,
         min_interruption_duration=1.0,
     )
@@ -421,6 +421,18 @@ async def fachwelt_agent(ctx: JobContext):
 
     watchdog = CallWatchdog(session=session, call_id=call_id, summary=summary)
     silence_task: asyncio.Task[None] | None = None
+
+    async def _finalize() -> None:
+        global _active_sessions
+        if silence_task is not None and not silence_task.done():
+            silence_task.cancel()
+        watchdog.stop()
+        if not summary.final_state or summary.final_state == "unknown":
+            summary.final_state = "user_hangup"
+        summary.emit()
+        _active_sessions = max(0, _active_sessions - 1)
+
+    ctx.add_shutdown_callback(_finalize)
 
     try:
         await session.start(
@@ -478,15 +490,6 @@ async def fachwelt_agent(ctx: JobContext):
         summary.record_error(source="entrypoint", error=str(e))
         log_event(call_id, "entrypoint_exception", error=str(e), error_type=type(e).__name__)
         raise
-    finally:
-        if silence_task is not None and not silence_task.done():
-            silence_task.cancel()
-        watchdog.stop()
-        if not summary.final_state or summary.final_state == "unknown":
-            # Call ended without a tool/watchdog setting state — likely user hangup.
-            summary.final_state = "user_hangup"
-        summary.emit()
-        _active_sessions = max(0, _active_sessions - 1)
 
 
 if __name__ == "__main__":
