@@ -120,7 +120,7 @@ TTS_VOICE_ID = "v3V1d2rk6528UrLKRuy8"  # Susi - Effortless and Confident (Voice-
 # Voice-Scout 2026-04-29 Setting B — Susi tied at 95.6% Levenshtein, won ear-test.
 # Live-Validation 2026-04-30: stability 0.55 → 0.80 (Konsistenz), style 0.15 → 0.30 (etwas wärmer/freundlicher)
 PHONIO_VOICE_SETTINGS = elevenlabs.VoiceSettings(
-    stability=0.85,
+    stability=0.90,
     similarity_boost=0.80,
     style=0.20,
     use_speaker_boost=True,
@@ -350,6 +350,11 @@ async def _silence_watch(session: AgentSession, call_id: str, summary: CallSumma
         await session.aclose()
     except asyncio.CancelledError:
         pass
+    except RuntimeError as e:
+        # Race: shutdown started while we were past the cancel point.
+        # AgentSession already closing — nothing to do.
+        if "isn't running" not in str(e):
+            raise
 
 
 @server.rtc_session()
