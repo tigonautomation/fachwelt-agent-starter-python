@@ -24,6 +24,7 @@ from livekit.agents import (
 from livekit.plugins import ai_coustics, deepgram, elevenlabs, openai, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
+from config_loader import AgentRuntimeConfig, load_runtime_config
 from health import start_health_server
 from observability import CallSummary, fire_webhook, log_event, new_call_id
 from watchdog import CallWatchdog
@@ -100,16 +101,21 @@ async def opener_audio_frames() -> AsyncIterator[rtc.AudioFrame]:
 AGENT_MODEL = "gpt-4.1"
 
 
-def _build_llm() -> openai.LLM:
+def _build_llm(temperature: float | None = None) -> openai.LLM:
     azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
     if azure_endpoint:
-        return openai.LLM.with_azure(
+        kwargs = dict(
             model=AGENT_MODEL,
             azure_endpoint=azure_endpoint,
             azure_deployment=os.environ["AZURE_OPENAI_DEPLOYMENT"],
             api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-10-21"),
             api_key=os.environ["AZURE_OPENAI_API_KEY"],
         )
+        if temperature is not None:
+            kwargs["temperature"] = temperature
+        return openai.LLM.with_azure(**kwargs)
+    if temperature is not None:
+        return openai.LLM(model=AGENT_MODEL, temperature=temperature)
     return openai.LLM(model=AGENT_MODEL)
 
 # Quality over latency — multilingual_v2 hat deutlich natürlichere DE-Prosodie als turbo
