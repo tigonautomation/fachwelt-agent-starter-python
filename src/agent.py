@@ -126,13 +126,20 @@ TTS_VOICE_ID = "v3V1d2rk6528UrLKRuy8"  # Susi - Effortless and Confident (Voice-
 
 # Voice-Scout 2026-04-29 Setting B — Susi tied at 95.6% Levenshtein, won ear-test.
 # Live-Validation 2026-04-30: stability 0.55 → 0.80 (Konsistenz), style 0.15 → 0.30 (etwas wärmer/freundlicher)
-PHONIO_VOICE_SETTINGS = elevenlabs.VoiceSettings(
-    stability=0.95,
-    similarity_boost=0.80,
-    style=0.20,
-    use_speaker_boost=True,
-    speed=0.95,
-)
+DEFAULT_VOICE_SPEED = 0.95
+
+
+def _voice_settings(speed: float = DEFAULT_VOICE_SPEED) -> elevenlabs.VoiceSettings:
+    return elevenlabs.VoiceSettings(
+        stability=0.95,
+        similarity_boost=0.80,
+        style=0.20,
+        use_speaker_boost=True,
+        speed=speed,
+    )
+
+
+PHONIO_VOICE_SETTINGS = _voice_settings()
 
 # Pronunciation dictionary for German + English loanwords (Marketplace, B2B, KI, URL, fachwelt.de)
 FACHWELT_PRONUNCIATION_DICT = [
