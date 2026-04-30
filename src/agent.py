@@ -268,8 +268,8 @@ def _record_tool_outcome(state: str, reason: str, **fields: object) -> None:
 
 
 class FachweltAssistant(Agent):
-    def __init__(self) -> None:
-        super().__init__(instructions=FACHWELT_PROMPT)
+    def __init__(self, instructions: str | None = None) -> None:
+        super().__init__(instructions=instructions or FACHWELT_PROMPT)
 
     @function_tool
     async def mark_qualified_send_email(self, context: RunContext, email: str):
@@ -343,7 +343,12 @@ def prewarm(proc: JobProcess):
 server.setup_fnc = prewarm
 
 
-async def _silence_watch(session: AgentSession, call_id: str, summary: CallSummary) -> None:
+async def _silence_watch(
+    session: AgentSession,
+    call_id: str,
+    summary: CallSummary,
+    reprompt_text: str = SILENCE_REPROMPT_TEXT,
+) -> None:
     """C13 — re-prompt once on real silence, hangup if user never engages.
 
     "Real silence" = neither agent nor user has been speaking for the threshold
@@ -375,7 +380,7 @@ async def _silence_watch(session: AgentSession, call_id: str, summary: CallSumma
                 if idle < SILENCE_REPROMPT_THRESHOLD_S:
                     continue
                 log_event(call_id, "silence_reprompt_after_opener")
-                await session.say(SILENCE_REPROMPT_TEXT, allow_interruptions=True)
+                await session.say(reprompt_text, allow_interruptions=True)
                 reprompted = True
                 last_activity = time.time()
                 continue
