@@ -360,7 +360,11 @@ async def fachwelt_agent(ctx: JobContext):
     log_event(call_id, "call_started", room=ctx.room.name)
 
     session = AgentSession(
-        stt=deepgram.STT(model="nova-3", language="de"),
+        stt=deepgram.STT(
+            model="nova-3",
+            language="de",
+            base_url="https://api.eu.deepgram.com/v1/listen",
+        ),
         llm=openai.LLM(model=AGENT_MODEL),
         tts=elevenlabs.TTS(
             voice_id=TTS_VOICE_ID,
