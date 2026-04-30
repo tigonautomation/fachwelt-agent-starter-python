@@ -32,7 +32,10 @@ def _agent_llm() -> llm.LLM:
 
 
 def _judge_llm() -> llm.LLM:
-    return openai.LLM(model="gpt-4.1-mini")
+    # Full gpt-4.1 (not mini) for the judge — gpt-4.1-mini ignored the
+    # PASS-DEFAULT preamble too often and produced false-fails on factual
+    # statements like "ab September" that the agent prompt explicitly allows.
+    return openai.LLM(model="gpt-4.1")
 
 
 def _first_assistant_message_index(events) -> int | None:
