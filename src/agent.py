@@ -392,8 +392,8 @@ async def fachwelt_agent(ctx: JobContext):
         turn_detection=MultilingualModel(),
         vad=ctx.proc.userdata["vad"],
         preemptive_generation=True,
-        min_endpointing_delay=0.3,
-        max_endpointing_delay=2.0,
+        min_endpointing_delay=0.2,
+        max_endpointing_delay=1.5,
         allow_interruptions=True,
         min_interruption_duration=1.0,
     )
