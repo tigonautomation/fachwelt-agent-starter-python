@@ -1,27 +1,23 @@
-"""Fetches per-call agent config from the dashboard and applies locked blocks.
+"""Per-call agent config carried in `room.metadata`.
 
-The room.metadata payload set by the dashboard's /api/livekit/token route
-carries `{"configId": "<uuid>"}`. The worker fetches the matching
-AgentConfig over HTTP, re-injects the locked compliance blocks server-side,
-and exposes a small dataclass with the tunable runtime values.
+The dashboard's /api/livekit/token route packs the full AgentConfig payload
+into room.metadata as `{"role": "operator", "config": {...}}`. The worker
+parses that here, re-injects locked compliance blocks server-side, and
+exposes a small dataclass with the tunable runtime values.
 
-Falls back silently to hardcoded defaults if the fetch fails — the call
-must keep running even if the dashboard is unreachable.
+Falls back silently to hardcoded defaults if metadata is missing or
+malformed — the call must keep running.
 """
 
 from __future__ import annotations
 
+import json
 import logging
-import os
 from dataclasses import dataclass
-
-import httpx
 
 from locked_blocks import apply_locked_blocks
 
 logger = logging.getLogger("agent.config")
-
-DEFAULT_TIMEOUT_S = 5.0
 
 
 @dataclass(frozen=True)
@@ -57,69 +53,51 @@ class AgentRuntimeConfig:
         )
 
 
-async def fetch_config(config_id: str) -> dict | None:
-    """GET dashboard `/api/agent-configs/:id`. Returns parsed JSON or None on any failure."""
-    base = os.getenv("DASHBOARD_API_BASE")
-    token = os.getenv("DASHBOARD_API_TOKEN")
-    if not base or not token:
-        logger.warning("dashboard env missing — using fallback config")
+def parse_metadata_config(raw_metadata: str | None) -> dict | None:
+    """Extract the `config` dict from room.metadata JSON. None on any failure."""
+    if not raw_metadata:
         return None
-
-    url = f"{base.rstrip('/')}/api/agent-configs/{config_id}"
-    headers = {"authorization": f"Bearer {token}"}
-
-    for attempt in (1, 2):
-        try:
-            async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_S) as client:
-                resp = await client.get(url, headers=headers)
-            if resp.status_code == 200:
-                return resp.json()
-            logger.warning(
-                "config fetch non-200: status=%s attempt=%s body=%s",
-                resp.status_code,
-                attempt,
-                resp.text[:200],
-            )
-            if resp.status_code in (401, 403, 404):
-                return None
-        except httpx.HTTPError as e:
-            logger.warning("config fetch error attempt=%s: %s", attempt, e)
-    return None
+    try:
+        parsed = json.loads(raw_metadata)
+    except ValueError as e:
+        logger.warning("metadata json parse failed: %s", e)
+        return None
+    if not isinstance(parsed, dict):
+        return None
+    cfg = parsed.get("config")
+    return cfg if isinstance(cfg, dict) else None
 
 
-async def load_runtime_config(
-    config_id: str | None,
+def load_runtime_config(
+    raw_metadata: str | None,
     *,
     default_system_prompt: str,
     default_opener_text: str,
     default_silence_reprompt_text: str,
 ) -> AgentRuntimeConfig:
-    """Fetch + merge with hardcoded defaults, always re-injecting locked blocks."""
+    """Parse metadata + merge with hardcoded defaults, always re-injecting locked blocks."""
     fallback = AgentRuntimeConfig.fallback(
         system_prompt=default_system_prompt,
         opener_text=default_opener_text,
         silence_reprompt_text=default_silence_reprompt_text,
     )
-    if not config_id:
-        return fallback
-
-    raw = await fetch_config(config_id)
-    if not raw:
+    cfg = parse_metadata_config(raw_metadata)
+    if not cfg:
         return fallback
 
     try:
         return AgentRuntimeConfig(
-            config_id=raw.get("id"),
-            name=raw.get("name"),
-            system_prompt=apply_locked_blocks(str(raw["systemPrompt"])),
-            opener_text=str(raw["openerText"]),
-            temperature=float(raw.get("temperature", fallback.temperature)),
-            voice_speed=float(raw.get("voiceSpeed", fallback.voice_speed)),
+            config_id=cfg.get("id"),
+            name=cfg.get("name"),
+            system_prompt=apply_locked_blocks(str(cfg["systemPrompt"])),
+            opener_text=str(cfg["openerText"]),
+            temperature=float(cfg.get("temperature", fallback.temperature)),
+            voice_speed=float(cfg.get("voiceSpeed", fallback.voice_speed)),
             max_call_duration_s=int(
-                raw.get("maxCallDurationS", fallback.max_call_duration_s)
+                cfg.get("maxCallDurationS", fallback.max_call_duration_s)
             ),
             silence_reprompt_text=str(
-                raw.get("silenceRepromptText", fallback.silence_reprompt_text)
+                cfg.get("silenceRepromptText", fallback.silence_reprompt_text)
             ),
         )
     except (KeyError, TypeError, ValueError) as e:
