@@ -1,20 +1,5 @@
-# LiveKit Cloud Agents deploy config.
-#
-# Deploy:
-#   lk agent create
-#   lk agent deploy
-#   lk agent secrets set DEEPGRAM_API_KEY=... ELEVEN_API_KEY=... \
-#     AZURE_OPENAI_API_KEY=... AZURE_OPENAI_ENDPOINT=... AZURE_OPENAI_DEPLOYMENT=...
-#
-# Per-call config (system prompt, opener, temperature, ...) is delivered by
-# the dashboard via room.metadata at session start. No HTTP fetch needed.
-
 [project]
-subdomain = "marketplace-x5heht19"
+  subdomain = "marketplace-x5heht19"
 
 [agent]
-id = "fachwelt-outbound"
-
-[build]
-runtime = "python"
-entry = "src/agent.py"
+  id = "CA_N225bBuzqRfX"
