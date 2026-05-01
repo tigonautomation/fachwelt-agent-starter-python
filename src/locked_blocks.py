@@ -102,7 +102,9 @@ LOCKED_BLOCKS: Final[dict[str, str]] = {
 
 _BLOCK_PATTERNS: Final[dict[str, re.Pattern[str]]] = {
     key: re.compile(
-        rf"<!--\s*LOCKED:{key.upper()}\s*-->[\s\S]*?<!--\s*LOCKED:END\s*-->"
+        rf"<!--\s*LOCKED:{key.upper()}\s*-->"
+        r"(?:(?!<!--\s*LOCKED:[A-Z_]+\s*-->)[\s\S])*?"
+        r"<!--\s*LOCKED:END\s*-->"
     )
     for key in LOCKED_BLOCK_ORDER
 }
