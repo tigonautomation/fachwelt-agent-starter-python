@@ -98,6 +98,13 @@ async def run(base: str) -> int:
         print(f"  FAIL: connect: {e}")
         return 3
 
+    for p in room.remote_participants.values():
+        if p.kind == rtc.ParticipantKind.PARTICIPANT_KIND_AGENT:
+            agent_identity = p.identity
+            agent_joined.set()
+            print(f"  agent already-present: identity={p.identity}")
+            break
+
     print(f"[3/5] Waiting up to {AGENT_JOIN_TIMEOUT_S}s for agent to join ...")
     t0 = time.monotonic()
     try:
