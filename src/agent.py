@@ -434,20 +434,9 @@ async def fachwelt_agent(ctx: JobContext):
     # available before we build the session and assistant.
     await ctx.connect()
 
-    config_id: str | None = None
     raw_metadata = getattr(ctx.room, "metadata", None) or ""
-    if raw_metadata:
-        try:
-            import json as _json
-
-            parsed = _json.loads(raw_metadata)
-            if isinstance(parsed, dict):
-                config_id = parsed.get("configId") or parsed.get("config_id")
-        except ValueError:
-            log_event(call_id, "room_metadata_parse_failed", raw=str(raw_metadata)[:200])
-
-    runtime_cfg: AgentRuntimeConfig = await load_runtime_config(
-        config_id,
+    runtime_cfg: AgentRuntimeConfig = load_runtime_config(
+        raw_metadata,
         default_system_prompt=FACHWELT_PROMPT,
         default_opener_text=OPENER_TEXT,
         default_silence_reprompt_text=SILENCE_REPROMPT_TEXT,
