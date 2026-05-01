@@ -10,7 +10,7 @@
 # the dashboard via room.metadata at session start. No HTTP fetch needed.
 
 [project]
-subdomain = "marketplace"
+subdomain = "marketplace-x5heht19"
 
 [agent]
 id = "fachwelt-outbound"
