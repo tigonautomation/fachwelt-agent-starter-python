@@ -348,18 +348,18 @@ async def _silence_watch(
     call_id: str,
     summary: CallSummary,
     reprompt_text: str = SILENCE_REPROMPT_TEXT,
+    user_engaged_event: asyncio.Event | None = None,
 ) -> None:
     """C13 — re-prompt once on real silence, hangup if user never engages.
 
-    "Real silence" = neither agent nor user has been speaking for the threshold
-    window. The previous version used flat asyncio.sleep() and counted agent
-    speaking-time as silence, causing false hangups while the agent was still
-    talking. Now we poll user_state/agent_state and reset last_activity on every
-    speaking observation. First user turn cancels the watcher entirely.
+    user_engaged_event is set by the `user_input_transcribed` listener as soon
+    as STT produces any final transcript. This is event-driven instead of
+    polling session.user_state, which could miss short utterances ("ja", "mhm")
+    that complete between 0.5s polls — the previous bug fired a reprompt after
+    Lisa's own long turn even though the caller had already engaged.
     """
     poll = 0.5
     last_activity = time.time()
-    user_engaged = False
     reprompted = False
 
     try:
@@ -367,8 +367,7 @@ async def _silence_watch(
             await asyncio.sleep(poll)
             now = time.time()
 
-            if session.user_state == "speaking":
-                user_engaged = True
+            if user_engaged_event is not None and user_engaged_event.is_set():
                 return  # conversation flow takes over
             if session.agent_state == "speaking":
                 last_activity = now
@@ -387,7 +386,7 @@ async def _silence_watch(
 
             if idle < SILENCE_HANGUP_THRESHOLD_S:
                 continue
-            if user_engaged:
+            if user_engaged_event is not None and user_engaged_event.is_set():
                 return
             log_event(call_id, "silence_hangup_no_response")
             summary.final_state = "callback"
@@ -484,9 +483,12 @@ async def fachwelt_agent(ctx: JobContext):
         summary.record_error(source=str(source), error=str(err))
         log_event(call_id, "session_error", source=str(source), error=str(err))
 
+    user_engaged_event = asyncio.Event()
+
     def _on_user_input(ev) -> None:  # noqa: ANN001
         if getattr(ev, "is_final", True):
             summary.user_turns += 1
+            user_engaged_event.set()
 
     def _on_conversation_item(ev) -> None:  # noqa: ANN001
         item = getattr(ev, "item", None)
@@ -564,7 +566,13 @@ async def fachwelt_agent(ctx: JobContext):
         # C13 — kick off silence watcher only after opener completes so
         # the threshold doesn't include opener playback time.
         silence_task = asyncio.create_task(
-            _silence_watch(session, call_id, summary, runtime_cfg.silence_reprompt_text),
+            _silence_watch(
+                session,
+                call_id,
+                summary,
+                runtime_cfg.silence_reprompt_text,
+                user_engaged_event=user_engaged_event,
+            ),
             name="silence-watch",
         )
     except Exception as e:
