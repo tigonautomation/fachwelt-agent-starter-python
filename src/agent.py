@@ -422,10 +422,10 @@ async def fachwelt_agent(ctx: JobContext):
             logger.warning(f"health server bind skipped: {e}")
             _health_runner = "shared"  # sentinel to skip future attempts
 
+    # Provisional id; replaced with dashboard-supplied voice_call_id once
+    # room.metadata is loaded. This keeps very-early log lines attributable.
     call_id = new_call_id(ctx.room.name)
     ctx.log_context_fields = {"room": ctx.room.name, "call_id": call_id}
-    summary = CallSummary(call_id=call_id, room=ctx.room.name)
-    _current_call.set((call_id, summary))
     _active_sessions += 1
     log_event(call_id, "call_started", room=ctx.room.name)
 
@@ -440,6 +440,16 @@ async def fachwelt_agent(ctx: JobContext):
         default_opener_text=OPENER_TEXT,
         default_silence_reprompt_text=SILENCE_REPROMPT_TEXT,
     )
+    if runtime_cfg.voice_call_id:
+        log_event(
+            call_id,
+            "call_id_rebound",
+            new_call_id=runtime_cfg.voice_call_id,
+        )
+        call_id = runtime_cfg.voice_call_id
+        ctx.log_context_fields = {"room": ctx.room.name, "call_id": call_id}
+    summary = CallSummary(call_id=call_id, room=ctx.room.name)
+    _current_call.set((call_id, summary))
     log_event(
         call_id,
         "runtime_config_loaded",
@@ -448,6 +458,7 @@ async def fachwelt_agent(ctx: JobContext):
         temperature=runtime_cfg.temperature,
         voice_speed=runtime_cfg.voice_speed,
         max_call_duration_s=runtime_cfg.max_call_duration_s,
+        voice_call_id_from_metadata=bool(runtime_cfg.voice_call_id),
     )
 
     session = AgentSession(
