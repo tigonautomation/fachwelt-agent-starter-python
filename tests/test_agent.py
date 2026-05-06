@@ -306,6 +306,28 @@ async def test_callback_requested() -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# 8b. Rückruf von einem Menschen → schedule_callback(requested_human=True)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_callback_requested_human() -> None:
+    """User verlangt explizit Mensch-Rückruf. requested_human muss True sein."""
+    async with (
+        _agent_llm() as agent_llm,
+        AgentSession(llm=agent_llm) as session,
+    ):
+        await session.start(FachweltAssistant())
+        result = await session.run(
+            user_input="Ich möchte bitte von einem echten Menschen zurückgerufen werden, nicht von einer KI."
+        )
+
+        result.expect.contains_function_call(
+            name="schedule_callback",
+            arguments={"requested_human": True},
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 9. Kein Interesse → graceful exit
 # ─────────────────────────────────────────────────────────────────────────────
 

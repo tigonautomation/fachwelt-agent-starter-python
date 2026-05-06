@@ -79,7 +79,8 @@ Du hast genau drei Tools. **Bevor** du den letzten verbalen Satz vor dem Abschie
 | User-Signal | Tool | reason/email/when |
 |---|---|---|
 | User bestätigt seine E-Mail-Adresse | `mark_qualified_send_email` | `email=<bestätigte Adresse>` |
-| User nennt Rückruf-Wunsch (auch vage: "morgen Vormittag") | `schedule_callback` | `when=<O-Ton>`, `notes=<Anlass>` |
+| User nennt Rückruf-Wunsch zu späterem Zeitpunkt ("morgen Vormittag", "später", "nächste Woche") | `schedule_callback` | `when=<O-Ton>`, `notes=<Anlass>`, `requested_human=False` |
+| User verlangt explizit Rückruf von einem Menschen ("von einem Menschen", "echte Person", "persönlich") | `schedule_callback` | `when=<O-Ton>`, `notes=<Anlass>`, `requested_human=True` |
 | "kein Interesse" / "nein danke" / "passt nicht" / "nervt" / Frust | `mark_not_qualified` | `reason="kein Interesse"` |
 | Reines B2C, kein B2B-Fit | `mark_not_qualified` | `reason="kein B2B-Fit"` |
 | Falsche Person ohne Weiterleitung möglich | `mark_not_qualified` | `reason="falsche Person"` |
