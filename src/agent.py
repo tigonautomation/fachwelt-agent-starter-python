@@ -1,15 +1,8 @@
-import asyncio
 import logging
 import os
 import sys
-import time
-from contextvars import ContextVar
-from pathlib import Path
-from typing import AsyncIterator
 
-import av
 from dotenv import load_dotenv
-from livekit import rtc
 from livekit.agents import (
     Agent,
     AgentServer,
@@ -24,10 +17,17 @@ from livekit.agents import (
 from livekit.plugins import ai_coustics, deepgram, elevenlabs, openai, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
+from call_event_sink import CallEventSink, ToolInvoked, production_sink
+from call_session import CallSession
 from config_loader import AgentRuntimeConfig, load_runtime_config
 from health import start_health_server
-from observability import CallSummary, fire_webhook, log_event, new_call_id
-from watchdog import CallWatchdog
+from observability import CallSummary, log_event, new_call_id
+from opener import (
+    OPENER_AUDIO_PATH,
+    OPENER_SAMPLE_RATE,
+    OPENER_TEXT,
+    opener_audio_frames,
+)
 
 # F29 — flush stdout per record so Coolify/k8s log drivers receive partial-line
 # output without buffering. PYTHONUNBUFFERED=1 in the Dockerfile is the
@@ -42,60 +42,26 @@ logger = logging.getLogger("agent")
 
 load_dotenv(".env.local")
 
-# Per-call context shared by the FachweltAssistant tools so they can emit
-# structured events tagged with the right call_id without threading the
-# context through every function signature.
-_current_call: ContextVar[tuple[str, CallSummary] | None] = ContextVar(
-    "_current_call", default=None
-)
 _active_sessions: int = 0
 _health_runner = None
 
-OPENER_AUDIO_PATH = Path(__file__).resolve().parent.parent / "assets" / "opener.mp3"
-OPENER_TEXT = (
-    "Guten Tag, hier ist Lisa vom Fachwelt Verlag. "
-    "Kurzer Hinweis: ich bin eine KI, das Gespräch wird "
-    "zur Qualitätssicherung aufgezeichnet. Wir bauen einen "
-    "Marktplatz für B2B-Hersteller — hätten Sie zwei Minuten?"
-)
-OPENER_SAMPLE_RATE = 24000
+
+class _NullSink:
+    """Default sink for tests that construct FachweltAssistant without a session."""
+
+    def emit(self, event: object) -> None:
+        return None
 
 
-async def opener_audio_frames() -> AsyncIterator[rtc.AudioFrame]:
-    """Decode the pre-rendered opener MP3 and yield rtc.AudioFrame chunks.
-
-    Bypasses live ElevenLabs TTS for the opener so every call sounds 100% identical
-    (no sampling variance). Dynamic replies still use live TTS.
-    """
-    if not OPENER_AUDIO_PATH.exists():
-        raise FileNotFoundError(f"Opener audio missing at {OPENER_AUDIO_PATH}")
-
-    container = av.open(str(OPENER_AUDIO_PATH))
-    try:
-        stream = container.streams.audio[0]
-        resampler = av.AudioResampler(format="s16", layout="mono", rate=OPENER_SAMPLE_RATE)
-        for packet in container.demux(stream):
-            for frame in packet.decode():
-                for resampled in resampler.resample(frame):
-                    pcm = resampled.to_ndarray()
-                    samples_per_channel = pcm.shape[-1]
-                    yield rtc.AudioFrame(
-                        data=pcm.astype("int16").tobytes(),
-                        sample_rate=OPENER_SAMPLE_RATE,
-                        num_channels=1,
-                        samples_per_channel=samples_per_channel,
-                    )
-        for resampled in resampler.resample(None) or []:
-            pcm = resampled.to_ndarray()
-            samples_per_channel = pcm.shape[-1]
-            yield rtc.AudioFrame(
-                data=pcm.astype("int16").tobytes(),
-                sample_rate=OPENER_SAMPLE_RATE,
-                num_channels=1,
-                samples_per_channel=samples_per_channel,
-            )
-    finally:
-        container.close()
+# Re-exports kept for test imports (`from agent import OPENER_AUDIO_PATH, ...`).
+__all__ = [
+    "FACHWELT_PROMPT",
+    "OPENER_AUDIO_PATH",
+    "OPENER_SAMPLE_RATE",
+    "OPENER_TEXT",
+    "FachweltAssistant",
+    "opener_audio_frames",
+]
 
 
 AGENT_MODEL = "gpt-4.1"
@@ -249,28 +215,14 @@ Frag: "Darf ich Ihnen die Details einfach per E-Mail schicken?" — das ist der 
 """
 
 
-def _record_tool_outcome(state: str, reason: str, **fields: object) -> None:
-    """Stamp the call summary + emit a structured event + fire the CRM webhook.
-
-    Tools must return immediately so the agent can speak the goodbye line, so
-    the webhook is dispatched as a background task. The summary record makes
-    the per-call disposition observable even if the webhook is spooled.
-    """
-    ctx = _current_call.get()
-    if ctx is None:
-        # Tests instantiate the agent without an rtc_session — no call context.
-        logger.info(f"[{state.upper()}] reason={reason} fields={fields}")
-        return
-    call_id, summary = ctx
-    summary.final_state = state
-    summary.final_reason = reason
-    log_event(call_id, f"tool_{state}", reason=reason, **fields)
-    fire_webhook(call_id, state, {"reason": reason, **fields}, summary=summary)
-
-
 class FachweltAssistant(Agent):
-    def __init__(self, instructions: str | None = None) -> None:
+    def __init__(
+        self,
+        instructions: str | None = None,
+        sink: CallEventSink | None = None,
+    ) -> None:
         super().__init__(instructions=instructions or FACHWELT_PROMPT)
+        self._sink: CallEventSink = sink or _NullSink()
 
     @function_tool
     async def mark_qualified_send_email(self, context: RunContext, email: str):
@@ -281,7 +233,13 @@ class FachweltAssistant(Agent):
         Args:
             email: The confirmed email address (e.g. max@firma.de)
         """
-        _record_tool_outcome("qualified", reason="email_confirmed", email=email)
+        self._sink.emit(
+            ToolInvoked(
+                state="qualified",
+                reason="email_confirmed",
+                fields={"email": email},
+            )
+        )
         return "Email queued. Continue to graceful exit."
 
     @function_tool
@@ -302,11 +260,12 @@ class FachweltAssistant(Agent):
                 False (default) for neutral "später zurückrufen" — those become
                 AI re-call slots in the dashboard.
         """
-        _record_tool_outcome(
-            "callback",
-            reason=when,
-            notes=notes,
-            requested_human=bool(requested_human),
+        self._sink.emit(
+            ToolInvoked(
+                state="callback",
+                reason=when,
+                fields={"notes": notes, "requested_human": bool(requested_human)},
+            )
         )
         return "Callback noted. Continue to graceful exit."
 
@@ -317,7 +276,9 @@ class FachweltAssistant(Agent):
         Args:
             reason: Short reason (e.g. "kein B2B", "kein Interesse", "falsche Person")
         """
-        _record_tool_outcome("not_qualified", reason=reason)
+        self._sink.emit(
+            ToolInvoked(state="not_qualified", reason=reason, fields={})
+        )
         return "Marked not qualified. Continue to graceful exit."
 
 
@@ -339,12 +300,6 @@ server = AgentServer(
 )
 
 
-# C13 — if the user is silent for this long after the opener finishes, prompt
-# them once. After SILENCE_HANGUP_THRESHOLD_S more, give up and mark a callback.
-# Callers occasionally drop silently (no SIP BYE) — without this watchdog the
-# agent waits forever and the worker job is wasted.
-SILENCE_REPROMPT_THRESHOLD_S = 15.0
-SILENCE_HANGUP_THRESHOLD_S = 15.0
 SILENCE_REPROMPT_TEXT = (
     "Sind Sie noch dran? Falls die Verbindung schlecht ist, "
     "rufe ich gerne nochmal an."
@@ -359,125 +314,8 @@ def prewarm(proc: JobProcess):
 server.setup_fnc = prewarm
 
 
-async def _silence_watch(
-    session: AgentSession,
-    call_id: str,
-    summary: CallSummary,
-    reprompt_text: str = SILENCE_REPROMPT_TEXT,
-    user_engaged_event: asyncio.Event | None = None,
-) -> None:
-    """C13 — re-prompt once on real silence, hangup if user never engages.
-
-    user_engaged_event is set by the `user_input_transcribed` listener as soon
-    as STT produces any final transcript. This is event-driven instead of
-    polling session.user_state, which could miss short utterances ("ja", "mhm")
-    that complete between 0.5s polls — the previous bug fired a reprompt after
-    Lisa's own long turn even though the caller had already engaged.
-    """
-    poll = 0.5
-    last_activity = time.time()
-    reprompted = False
-
-    try:
-        while True:
-            await asyncio.sleep(poll)
-            now = time.time()
-
-            if user_engaged_event is not None and user_engaged_event.is_set():
-                return  # conversation flow takes over
-            if session.agent_state == "speaking":
-                last_activity = now
-                continue
-
-            idle = now - last_activity
-
-            if not reprompted:
-                if idle < SILENCE_REPROMPT_THRESHOLD_S:
-                    continue
-                log_event(call_id, "silence_reprompt_after_opener")
-                await session.say(reprompt_text, allow_interruptions=True)
-                reprompted = True
-                last_activity = time.time()
-                continue
-
-            if idle < SILENCE_HANGUP_THRESHOLD_S:
-                continue
-            if user_engaged_event is not None and user_engaged_event.is_set():
-                return
-            log_event(call_id, "silence_hangup_no_response")
-            summary.final_state = "callback"
-            summary.final_reason = "no_response_after_opener"
-            fire_webhook(
-                call_id,
-                "callback",
-                {"reason": "no_response_after_opener"},
-                summary=summary,
-            )
-            await session.aclose()
-            return
-    except asyncio.CancelledError:
-        pass
-    except RuntimeError as e:
-        # Race: shutdown started while we were past the cancel point.
-        # AgentSession already closing — nothing to do.
-        if "isn't running" not in str(e):
-            raise
-
-
-@server.rtc_session()
-async def fachwelt_agent(ctx: JobContext):
-    """Per-call entrypoint. Wires call_id, watchdog, silence-watch, and cleanup."""
-    global _active_sessions, _health_runner
-
-    if _health_runner is None:
-        try:
-            _health_runner = await start_health_server(lambda: _active_sessions)
-        except OSError as e:
-            # Port already bound by a sibling JobProcess in the same worker.
-            # Log + carry on; one server per worker is enough for liveness probes.
-            logger.warning(f"health server bind skipped: {e}")
-            _health_runner = "shared"  # sentinel to skip future attempts
-
-    # Provisional id; replaced with dashboard-supplied voice_call_id once
-    # room.metadata is loaded. This keeps very-early log lines attributable.
-    call_id = new_call_id(ctx.room.name)
-    ctx.log_context_fields = {"room": ctx.room.name, "call_id": call_id}
-    _active_sessions += 1
-    log_event(call_id, "call_started", room=ctx.room.name)
-
-    # Connect first so room.metadata (set by the dashboard token route) is
-    # available before we build the session and assistant.
-    await ctx.connect()
-
-    raw_metadata = getattr(ctx.room, "metadata", None) or ""
-    runtime_cfg: AgentRuntimeConfig = load_runtime_config(
-        raw_metadata,
-        default_system_prompt=FACHWELT_PROMPT,
-        default_opener_text=OPENER_TEXT,
-        default_silence_reprompt_text=SILENCE_REPROMPT_TEXT,
-    )
-    if runtime_cfg.voice_call_id:
-        log_event(
-            call_id,
-            "call_id_rebound",
-            new_call_id=runtime_cfg.voice_call_id,
-        )
-        call_id = runtime_cfg.voice_call_id
-        ctx.log_context_fields = {"room": ctx.room.name, "call_id": call_id}
-    summary = CallSummary(call_id=call_id, room=ctx.room.name)
-    _current_call.set((call_id, summary))
-    log_event(
-        call_id,
-        "runtime_config_loaded",
-        config_id=runtime_cfg.config_id,
-        config_name=runtime_cfg.name,
-        temperature=runtime_cfg.temperature,
-        voice_speed=runtime_cfg.voice_speed,
-        max_call_duration_s=runtime_cfg.max_call_duration_s,
-        voice_call_id_from_metadata=bool(runtime_cfg.voice_call_id),
-    )
-
-    session = AgentSession(
+def _build_session(runtime_cfg: AgentRuntimeConfig, ctx: JobContext) -> AgentSession:
+    return AgentSession(
         stt=deepgram.STT(
             model="nova-3",
             language="de",
@@ -502,110 +340,84 @@ async def fachwelt_agent(ctx: JobContext):
         min_interruption_duration=1.0,
     )
 
-    # D21 — capture stream errors as structured events so the call summary
-    # can attribute drops to a specific subsystem (TTS / STT / LLM).
-    def _on_session_error(ev) -> None:  # noqa: ANN001 — LK ev type changes between minors
-        source = getattr(getattr(ev, "source", None), "label", "unknown")
-        err = getattr(ev, "error", ev)
-        summary.record_error(source=str(source), error=str(err))
-        log_event(call_id, "session_error", source=str(source), error=str(err))
 
-    user_engaged_event = asyncio.Event()
+def _build_room_options() -> room_io.RoomOptions:
+    return room_io.RoomOptions(
+        audio_input=room_io.AudioInputOptions(
+            noise_cancellation=ai_coustics.audio_enhancement(
+                model=ai_coustics.EnhancerModel.QUAIL_VF_L
+            ),
+        ),
+    )
 
-    def _on_user_input(ev) -> None:  # noqa: ANN001
-        if getattr(ev, "is_final", True):
-            summary.user_turns += 1
-            user_engaged_event.set()
 
-    def _on_conversation_item(ev) -> None:  # noqa: ANN001
-        item = getattr(ev, "item", None)
-        if item is not None and getattr(item, "role", None) == "assistant":
-            summary.agent_turns += 1
+@server.rtc_session()
+async def fachwelt_agent(ctx: JobContext):
+    """Per-call entrypoint. Loads config, builds session, hands off to CallSession."""
+    global _active_sessions, _health_runner
 
-    session.on("error", _on_session_error)
-    session.on("user_input_transcribed", _on_user_input)
-    session.on("conversation_item_added", _on_conversation_item)
+    if _health_runner is None:
+        try:
+            _health_runner = await start_health_server(lambda: _active_sessions)
+        except OSError as e:
+            # Port already bound by a sibling JobProcess in the same worker.
+            # Log + carry on; one server per worker is enough for liveness probes.
+            logger.warning(f"health server bind skipped: {e}")
+            _health_runner = "shared"  # sentinel to skip future attempts
 
-    watchdog = CallWatchdog(session=session, call_id=call_id, summary=summary)
-    silence_task: asyncio.Task[None] | None = None
+    # Provisional id; replaced with dashboard-supplied voice_call_id once
+    # room.metadata is loaded. This keeps very-early log lines attributable.
+    call_id = new_call_id(ctx.room.name)
+    ctx.log_context_fields = {"room": ctx.room.name, "call_id": call_id}
+    _active_sessions += 1
+    log_event(call_id, "call_started", room=ctx.room.name)
 
-    async def _finalize() -> None:
+    # Connect first so room.metadata (set by the dashboard token route) is
+    # available before we build the session and assistant.
+    await ctx.connect()
+
+    raw_metadata = getattr(ctx.room, "metadata", None) or ""
+    runtime_cfg = load_runtime_config(
+        raw_metadata,
+        default_system_prompt=FACHWELT_PROMPT,
+        default_opener_text=OPENER_TEXT,
+        default_silence_reprompt_text=SILENCE_REPROMPT_TEXT,
+    )
+    if runtime_cfg.voice_call_id:
+        log_event(call_id, "call_id_rebound", new_call_id=runtime_cfg.voice_call_id)
+        call_id = runtime_cfg.voice_call_id
+        ctx.log_context_fields = {"room": ctx.room.name, "call_id": call_id}
+
+    summary = CallSummary(call_id=call_id, room=ctx.room.name)
+    sink = production_sink(call_id, summary)
+    log_event(
+        call_id,
+        "runtime_config_loaded",
+        config_id=runtime_cfg.config_id,
+        config_name=runtime_cfg.name,
+        temperature=runtime_cfg.temperature,
+        voice_speed=runtime_cfg.voice_speed,
+        max_call_duration_s=runtime_cfg.max_call_duration_s,
+        voice_call_id_from_metadata=bool(runtime_cfg.voice_call_id),
+    )
+
+    async def _decrement_active() -> None:
         global _active_sessions
-        if silence_task is not None and not silence_task.done():
-            silence_task.cancel()
-        watchdog.stop()
-        if not summary.final_state or summary.final_state == "unknown":
-            summary.final_state = "user_hangup"
-        summary.emit()
         _active_sessions = max(0, _active_sessions - 1)
 
-    ctx.add_shutdown_callback(_finalize)
-
-    try:
-        await session.start(
-            agent=FachweltAssistant(instructions=runtime_cfg.system_prompt),
-            room=ctx.room,
-            room_options=room_io.RoomOptions(
-                audio_input=room_io.AudioInputOptions(
-                    noise_cancellation=ai_coustics.audio_enhancement(
-                        model=ai_coustics.EnhancerModel.QUAIL_VF_L
-                    ),
-                ),
-            ),
-        )
-
-        # Seed the conversation — opener as pre-rendered audio for 100% consistency.
-        # Pre-flight validate the MP3 because LK Agents swallows audio-iterator
-        # exceptions via @log_exceptions; a corrupted/missing file would silently
-        # produce zero audio and the user hears "Hallo? Hallo?". (A3 silent-fail fix)
-        # Skip pre-rendered audio when a custom opener is configured — they won't match.
-        opener_audio = None
-        opener_text = runtime_cfg.opener_text
-        opener_is_default = opener_text.strip() == OPENER_TEXT.strip()
-        if opener_is_default:
-            try:
-                if not OPENER_AUDIO_PATH.exists():
-                    raise FileNotFoundError(f"opener missing at {OPENER_AUDIO_PATH}")
-                _validate = av.open(str(OPENER_AUDIO_PATH))
-                _validate.close()
-                opener_audio = opener_audio_frames()
-            except Exception as e:
-                log_event(
-                    call_id,
-                    "opener_audio_preflight_failed",
-                    error_type=type(e).__name__,
-                    error=str(e),
-                )
-                summary.record_error(source="opener_audio", error=str(e))
-
-        if opener_audio is not None:
-            await session.say(opener_text, audio=opener_audio, allow_interruptions=False)
-        else:
-            # Live-TTS fallback. Slightly slower first byte and prosody may differ,
-            # but the call still has audio.
-            await session.say(opener_text, allow_interruptions=False)
-
-        # Watchdog scoped to mid-conversation TTS hangs. The pre-rendered opener
-        # is 12.4s of legitimate playback, which would false-positive the 10s
-        # speaking-stuck timer. Arm only after opener completes.
-        watchdog.start()
-
-        # C13 — kick off silence watcher only after opener completes so
-        # the threshold doesn't include opener playback time.
-        silence_task = asyncio.create_task(
-            _silence_watch(
-                session,
-                call_id,
-                summary,
-                runtime_cfg.silence_reprompt_text,
-                user_engaged_event=user_engaged_event,
-            ),
-            name="silence-watch",
-        )
-    except Exception as e:
-        summary.record_error(source="entrypoint", error=str(e))
-        log_event(call_id, "entrypoint_exception", error=str(e), error_type=type(e).__name__)
-        raise
+    call = CallSession(
+        ctx=ctx,
+        session=_build_session(runtime_cfg, ctx),
+        assistant=FachweltAssistant(
+            instructions=runtime_cfg.system_prompt.text, sink=sink
+        ),
+        config=runtime_cfg,
+        sink=sink,
+        summary=summary,
+        room_options=_build_room_options(),
+        on_finalize=_decrement_active,
+    )
+    await call.run()
 
 
 if __name__ == "__main__":

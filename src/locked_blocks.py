@@ -11,6 +11,7 @@ Keep both files in sync when you change a block.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from typing import Final
 
 KI_DISCLOSURE_BODY: Final = """## KI- und Aufzeichnungs-Disclosure (Pflicht — DSGVO + UWG)
@@ -123,15 +124,36 @@ _BLOCK_PATTERNS: Final[dict[str, re.Pattern[str]]] = {
 }
 
 
-def strip_locked_blocks(prompt: str) -> str:
+def _strip_locked_blocks(prompt: str) -> str:
     out = prompt
     for pattern in _BLOCK_PATTERNS.values():
         out = pattern.sub("", out)
     return re.sub(r"\n{3,}", "\n\n", out).strip()
 
 
-def apply_locked_blocks(prompt: str) -> str:
-    """Strip any existing locked spans and re-append the canonical content."""
-    stripped = strip_locked_blocks(prompt)
+def _apply_locked_blocks(prompt: str) -> str:
+    stripped = _strip_locked_blocks(prompt)
     blocks = "\n\n".join(LOCKED_BLOCKS[k] for k in LOCKED_BLOCK_ORDER)
     return f"{stripped}\n\n{blocks}\n"
+
+
+@dataclass(frozen=True)
+class LockedPrompt:
+    """A system prompt with all compliance blocks guaranteed present.
+
+    Construct only via `LockedPrompt.from_raw`. Direct construction is
+    permitted but `__post_init__` enforces the invariant: every locked
+    block marker must be present in `text`.
+    """
+
+    text: str
+
+    def __post_init__(self) -> None:
+        for key in LOCKED_BLOCK_ORDER:
+            marker = f"<!-- LOCKED:{key.upper()} -->"
+            if marker not in self.text:
+                raise ValueError(f"LockedPrompt missing block: {key}")
+
+    @classmethod
+    def from_raw(cls, prompt: str) -> LockedPrompt:
+        return cls(text=_apply_locked_blocks(prompt))

@@ -20,6 +20,7 @@ from typing import Any
 
 import pytest
 
+from call_event_sink import production_sink
 from observability import (
     CallSummary,
     fire_webhook,
@@ -172,7 +173,7 @@ async def test_watchdog_speaking_stuck_triggers_recovery(
 
     session = _FakeSession()
     summary = CallSummary(call_id="call-w1", room="r")
-    w = wd.CallWatchdog(session=session, call_id="call-w1", summary=summary)
+    w = wd.CallWatchdog(session=session, sink=production_sink("call-w1", summary))
     w.start()
 
     session.emit("agent_state_changed", _StateChange("idle", "speaking"))
@@ -197,7 +198,7 @@ async def test_watchdog_llm_stuck_triggers_recovery(
 
     session = _FakeSession()
     summary = CallSummary(call_id="call-w2", room="r")
-    w = wd.CallWatchdog(session=session, call_id="call-w2", summary=summary)
+    w = wd.CallWatchdog(session=session, sink=production_sink("call-w2", summary))
     w.start()
 
     session.emit("user_state_changed", _StateChange("speaking", "listening"))
@@ -219,7 +220,7 @@ async def test_watchdog_does_not_fire_when_agent_recovers(
 
     session = _FakeSession()
     summary = CallSummary(call_id="call-w3", room="r")
-    w = wd.CallWatchdog(session=session, call_id="call-w3", summary=summary)
+    w = wd.CallWatchdog(session=session, sink=production_sink("call-w3", summary))
     w.start()
 
     session.emit("agent_state_changed", _StateChange("idle", "speaking"))

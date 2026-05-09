@@ -15,7 +15,7 @@ import json
 import logging
 from dataclasses import dataclass
 
-from locked_blocks import apply_locked_blocks
+from locked_blocks import LockedPrompt
 
 logger = logging.getLogger("agent.config")
 
@@ -26,7 +26,7 @@ class AgentRuntimeConfig:
 
     config_id: str | None
     name: str | None
-    system_prompt: str
+    system_prompt: LockedPrompt
     opener_text: str
     temperature: float
     voice_speed: float
@@ -41,11 +41,11 @@ class AgentRuntimeConfig:
         system_prompt: str,
         opener_text: str,
         silence_reprompt_text: str,
-    ) -> "AgentRuntimeConfig":
+    ) -> AgentRuntimeConfig:
         return cls(
             config_id=None,
             name=None,
-            system_prompt=apply_locked_blocks(system_prompt),
+            system_prompt=LockedPrompt.from_raw(system_prompt),
             opener_text=opener_text,
             temperature=0.7,
             voice_speed=0.95,
@@ -119,7 +119,7 @@ def load_runtime_config(
         return AgentRuntimeConfig(
             config_id=cfg.get("id"),
             name=cfg.get("name"),
-            system_prompt=apply_locked_blocks(str(cfg["systemPrompt"])),
+            system_prompt=LockedPrompt.from_raw(str(cfg["systemPrompt"])),
             opener_text=str(cfg["openerText"]),
             temperature=float(cfg.get("temperature", fallback.temperature)),
             voice_speed=float(cfg.get("voiceSpeed", fallback.voice_speed)),

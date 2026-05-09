@@ -25,7 +25,12 @@ from dataclasses import dataclass
 from livekit.agents.voice import AgentSession
 from livekit.agents.voice.events import AgentStateChangedEvent, UserStateChangedEvent
 
-from observability import CallSummary, log_event
+from call_event_sink import (
+    CallEventSink,
+    RecoverySayFailed,
+    RecoverySayTimedOut,
+    WatchdogTriggered,
+)
 
 SPEAKING_STUCK_THRESHOLD_S = 20.0
 LLM_STUCK_THRESHOLD_S = 15.0
@@ -46,10 +51,9 @@ class _WatchdogState:
 class CallWatchdog:
     """Per-session watchdog. Attach in the rtc_session entrypoint after start()."""
 
-    def __init__(self, session: AgentSession, call_id: str, summary: CallSummary):
+    def __init__(self, session: AgentSession, sink: CallEventSink):
         self._session = session
-        self._call_id = call_id
-        self._summary = summary
+        self._sink = sink
         self._state = _WatchdogState()
         self._poll_task: asyncio.Task[None] | None = None
         self._closed = asyncio.Event()
@@ -118,12 +122,11 @@ class CallWatchdog:
                 "llm_stuck", elapsed=round(elapsed, 1), threshold=LLM_STUCK_THRESHOLD_S
             )
 
-    def _trigger(self, kind: str, **details: float) -> None:
+    def _trigger(self, kind: str, *, elapsed: float, threshold: float) -> None:
         self._state.triggered = True
-        self._summary.watchdog_triggers += 1
-        self._summary.final_state = "technical_callback"
-        self._summary.final_reason = kind
-        log_event(self._call_id, f"watchdog_fired_{kind}", **details)
+        self._sink.emit(
+            WatchdogTriggered(kind=kind, elapsed=elapsed, threshold=threshold)
+        )
         asyncio.create_task(self._recover(), name=f"watchdog-recover-{kind}")
 
     async def _recover(self) -> None:
@@ -134,8 +137,8 @@ class CallWatchdog:
             try:
                 await asyncio.wait_for(handle, timeout=8.0)
             except asyncio.TimeoutError:
-                log_event(self._call_id, "recovery_say_timed_out")
+                self._sink.emit(RecoverySayTimedOut())
         except Exception as e:
-            log_event(self._call_id, "recovery_say_failed", error=str(e))
+            self._sink.emit(RecoverySayFailed(error=str(e)))
         finally:
             await self._session.aclose()

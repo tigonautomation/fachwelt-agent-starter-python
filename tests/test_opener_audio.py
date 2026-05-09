@@ -61,7 +61,7 @@ async def test_opener_audio_frames_raises_on_missing_file(
     silently yielding zero frames.
     """
     missing = tmp_path / "does-not-exist.mp3"
-    monkeypatch.setattr("agent.OPENER_AUDIO_PATH", missing)
+    monkeypatch.setattr("opener.OPENER_AUDIO_PATH", missing)
 
     with pytest.raises(FileNotFoundError):
         async for _ in opener_audio_frames():
