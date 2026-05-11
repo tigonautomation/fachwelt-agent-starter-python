@@ -376,21 +376,38 @@ async def fachwelt_agent(ctx: JobContext):
     call_start_ts = time.time()
     log_event(call_id, "call_started", room=ctx.room.name)
 
-    # Block 1 — register caller-presence listeners BEFORE ctx.connect() so we
-    # never miss a race where the SIP participant joins between connect() and
-    # the CallSession constructing its own listeners. Capture is via shared
-    # asyncio.Events that CallSession awaits.
+    # Block 1 — gate opener on SIP `callStatus="active"` (= callee picked up),
+    # NOT on participant_connected. The SIP participant joins the room at
+    # dialing/ringing time, long before answer — using that as the signal
+    # caused the agent to talk over ringback. The canonical answer-signal is
+    # the `sip.callStatus` attribute flipping to `"active"`. Listener attached
+    # BEFORE ctx.connect() to avoid the connect-vs-event race.
     caller_connected = asyncio.Event()
     caller_disconnected = asyncio.Event()
 
+    def _check_sip_status(participant) -> None:
+        if participant.kind != ParticipantKind.PARTICIPANT_KIND_SIP:
+            return
+        status = (participant.attributes or {}).get("sip.callStatus")
+        if status == "active" and not caller_connected.is_set():
+            caller_connected.set()
+            log_event(call_id, "sip_call_active", identity=participant.identity)
+        elif status == "hangup" and not caller_disconnected.is_set():
+            caller_disconnected.set()
+            log_event(call_id, "sip_call_hangup", identity=participant.identity)
+
+    def _on_participant_attributes_changed(changed, participant) -> None:
+        _check_sip_status(participant)
+
     def _on_participant_connected(participant) -> None:
         if participant.kind == ParticipantKind.PARTICIPANT_KIND_SIP:
-            caller_connected.set()
             log_event(
                 call_id,
-                "sip_participant_connected",
+                "sip_participant_joined",
                 identity=participant.identity,
+                status=(participant.attributes or {}).get("sip.callStatus"),
             )
+            _check_sip_status(participant)
 
     def _on_participant_disconnected(participant) -> None:
         if participant.kind == ParticipantKind.PARTICIPANT_KIND_SIP:
@@ -401,6 +418,7 @@ async def fachwelt_agent(ctx: JobContext):
                 identity=participant.identity,
             )
 
+    ctx.room.on("participant_attributes_changed", _on_participant_attributes_changed)
     ctx.room.on("participant_connected", _on_participant_connected)
     ctx.room.on("participant_disconnected", _on_participant_disconnected)
 
@@ -408,8 +426,9 @@ async def fachwelt_agent(ctx: JobContext):
     # available before we build the session and assistant.
     await ctx.connect()
 
-    # Catch the race where the SIP participant joined between event-attach and
-    # connect: scan already-present remote participants once after connect.
+    # Catch the race where the SIP participant joined (and possibly already
+    # flipped to active) between event-attach and connect: scan present
+    # remote participants once after connect.
     for p in ctx.room.remote_participants.values():
         _on_participant_connected(p)
 

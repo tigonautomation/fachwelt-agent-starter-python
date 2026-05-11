@@ -38,10 +38,11 @@ from observability import CallSummary, log_event
 from opener import OPENER_TEXT, opener_audio_frames, validate_opener_audio
 from watchdog import CallWatchdog
 
-# Block 1 — wait up to this long for the SIP caller to subscribe before
-# playing the opener. Without this gate, TTS publishes into a room that has
-# no caller-side subscription yet and audio is lost / delayed.
-CALLER_CONNECT_TIMEOUT_S = 3.0
+# Block 1 — hard ceiling for waiting on SIP pickup. Twilio outbound dial
+# typically connects within 30s; 60s leaves headroom for slow carriers but
+# bounds the worker against a stuck "ringing forever" state. The opener is
+# played ONLY after `sip.callStatus="active"` — never on timeout.
+CALLER_PICKUP_TIMEOUT_S = 60.0
 
 # C13 — if the user is silent for this long after the opener finishes, prompt
 # them once. After SILENCE_HANGUP_THRESHOLD_S more, give up and mark a callback.
@@ -96,24 +97,43 @@ class CallSession:
                 room=self._ctx.room,
                 room_options=self._room_options,
             )
-            # Block 1 — gate opener on SIP caller being subscribable. If the
-            # caller is not connected within CALLER_CONNECT_TIMEOUT_S, play
-            # anyway (legacy fallback) so we never hang the worker.
-            try:
-                await asyncio.wait_for(
-                    self._caller_connected.wait(), timeout=CALLER_CONNECT_TIMEOUT_S
-                )
+            # Block 1 — gate opener on SIP pickup (`sip.callStatus=active`).
+            # Race two events: pickup OR caller disconnect/timeout. If the
+            # callee never answers (disconnect or 60s ceiling), bail without
+            # speaking — the watchdog/recovery cron will mark the lead failed.
+            connected_task = asyncio.create_task(self._caller_connected.wait())
+            disconnected_task = asyncio.create_task(self._caller_disconnected.wait())
+            done, pending = await asyncio.wait(
+                {connected_task, disconnected_task},
+                timeout=CALLER_PICKUP_TIMEOUT_S,
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            for t in pending:
+                t.cancel()
+            if connected_task in done:
                 log_event(
                     self._summary.call_id,
-                    "caller_ready_pre_opener",
+                    "caller_pickup",
                     waited_s=round(time.time() - self._call_start_ts, 3),
                 )
-            except asyncio.TimeoutError:
+            elif disconnected_task in done:
                 log_event(
                     self._summary.call_id,
-                    "caller_connect_timeout_pre_opener",
-                    timeout_s=CALLER_CONNECT_TIMEOUT_S,
+                    "caller_disconnect_pre_pickup",
+                    waited_s=round(time.time() - self._call_start_ts, 3),
                 )
+                # No pickup → no opener. Let _watch_caller_disconnect emit
+                # CallerHungUp and close cleanly.
+                return
+            else:
+                log_event(
+                    self._summary.call_id,
+                    "caller_pickup_timeout",
+                    timeout_s=CALLER_PICKUP_TIMEOUT_S,
+                )
+                self._sink.emit(CallerHungUp(reason="pickup_timeout"))
+                await self._session.aclose()
+                return
             await self._play_opener()
             self._summary.time_to_first_audio_ms = int(
                 (time.time() - self._call_start_ts) * 1000
