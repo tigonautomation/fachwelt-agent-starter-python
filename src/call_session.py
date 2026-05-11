@@ -24,6 +24,7 @@ from livekit.agents import Agent, AgentSession, JobContext, room_io
 
 from call_event_sink import (
     AgentTurn,
+    CallerHungUp,
     CallEventSink,
     EntrypointException,
     OpenerPreflightFailed,
@@ -33,9 +34,14 @@ from call_event_sink import (
     UserTurnFinal,
 )
 from config_loader import AgentRuntimeConfig
-from observability import CallSummary
+from observability import CallSummary, log_event
 from opener import OPENER_TEXT, opener_audio_frames, validate_opener_audio
 from watchdog import CallWatchdog
+
+# Block 1 — wait up to this long for the SIP caller to subscribe before
+# playing the opener. Without this gate, TTS publishes into a room that has
+# no caller-side subscription yet and audio is lost / delayed.
+CALLER_CONNECT_TIMEOUT_S = 3.0
 
 # C13 — if the user is silent for this long after the opener finishes, prompt
 # them once. After SILENCE_HANGUP_THRESHOLD_S more, give up and mark a callback.
@@ -56,6 +62,9 @@ class CallSession:
         sink: CallEventSink,
         summary: CallSummary,
         room_options: room_io.RoomOptions,
+        caller_connected: asyncio.Event,
+        caller_disconnected: asyncio.Event,
+        call_start_ts: float,
         on_finalize: Callable[[], Awaitable[None]] | None = None,
     ) -> None:
         self._ctx = ctx
@@ -67,12 +76,19 @@ class CallSession:
         self._room_options = room_options
         self._watchdog = CallWatchdog(session=session, sink=sink)
         self._silence_task: asyncio.Task[None] | None = None
+        self._disconnect_task: asyncio.Task[None] | None = None
         self._user_engaged = asyncio.Event()
+        self._caller_connected = caller_connected
+        self._caller_disconnected = caller_disconnected
+        self._call_start_ts = call_start_ts
         self._on_finalize_extra = on_finalize
 
     async def run(self) -> None:
         self._wire_listeners()
         self._ctx.add_shutdown_callback(self._finalize)
+        self._disconnect_task = asyncio.create_task(
+            self._watch_caller_disconnect(), name="caller-disconnect-watch"
+        )
 
         try:
             await self._session.start(
@@ -80,7 +96,33 @@ class CallSession:
                 room=self._ctx.room,
                 room_options=self._room_options,
             )
+            # Block 1 — gate opener on SIP caller being subscribable. If the
+            # caller is not connected within CALLER_CONNECT_TIMEOUT_S, play
+            # anyway (legacy fallback) so we never hang the worker.
+            try:
+                await asyncio.wait_for(
+                    self._caller_connected.wait(), timeout=CALLER_CONNECT_TIMEOUT_S
+                )
+                log_event(
+                    self._summary.call_id,
+                    "caller_ready_pre_opener",
+                    waited_s=round(time.time() - self._call_start_ts, 3),
+                )
+            except asyncio.TimeoutError:
+                log_event(
+                    self._summary.call_id,
+                    "caller_connect_timeout_pre_opener",
+                    timeout_s=CALLER_CONNECT_TIMEOUT_S,
+                )
             await self._play_opener()
+            self._summary.time_to_first_audio_ms = int(
+                (time.time() - self._call_start_ts) * 1000
+            )
+            log_event(
+                self._summary.call_id,
+                "opener_done",
+                time_to_first_audio_ms=self._summary.time_to_first_audio_ms,
+            )
             # Watchdog scoped to mid-conversation TTS hangs. The pre-rendered
             # opener is ~12s of legitimate playback, which would false-positive
             # the speaking-stuck timer. Arm only after opener completes.
@@ -201,6 +243,34 @@ class CallSession:
             if "isn't running" not in str(e):
                 raise
 
+    # ── caller-disconnect watcher ────────────────────────────────────────────
+
+    async def _watch_caller_disconnect(self) -> None:
+        """When the SIP caller hangs up (Twilio BYE → participant_disconnected),
+        emit CallerHungUp and close the session. Without this, the agent keeps
+        speaking into an empty room and the dashboard never sees an end-event."""
+        try:
+            await self._caller_disconnected.wait()
+        except asyncio.CancelledError:
+            return
+        # Already terminal? Skip — a tool already emitted a final_state.
+        if self._summary.final_state not in ("", "unknown"):
+            log_event(
+                self._summary.call_id,
+                "caller_hangup_after_terminal",
+                final_state=self._summary.final_state,
+            )
+            return
+        self._sink.emit(CallerHungUp(reason="caller_disconnect"))
+        try:
+            await self._session.aclose()
+        except Exception as e:
+            log_event(
+                self._summary.call_id,
+                "aclose_after_caller_hangup_failed",
+                error=str(e),
+            )
+
     # ── finalize ─────────────────────────────────────────────────────────────
 
     async def _finalize(self) -> None:
@@ -208,6 +278,8 @@ class CallSession:
         # mutate summary mid-emit.
         if self._silence_task is not None and not self._silence_task.done():
             self._silence_task.cancel()
+        if self._disconnect_task is not None and not self._disconnect_task.done():
+            self._disconnect_task.cancel()
         self._watchdog.stop()
         if not self._summary.final_state or self._summary.final_state == "unknown":
             self._summary.final_state = "user_hangup"

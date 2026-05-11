@@ -82,6 +82,13 @@ class SilenceHangup(CallEvent):
 
 
 @dataclass(frozen=True)
+class CallerHungUp(CallEvent):
+    """SIP caller disconnected (Twilio BYE). Terminal — close session + notify CRM."""
+
+    reason: str
+
+
+@dataclass(frozen=True)
 class RecoverySayTimedOut(CallEvent):
     """Watchdog recovery utterance did not complete in time."""
 
@@ -135,6 +142,8 @@ class LogSink:
                 log_event(self._call_id, "silence_reprompt_after_opener")
             case SilenceHangup():
                 log_event(self._call_id, "silence_hangup_no_response")
+            case CallerHungUp(reason=reason):
+                log_event(self._call_id, "caller_hangup", reason=reason)
             case RecoverySayTimedOut():
                 log_event(self._call_id, "recovery_say_timed_out")
             case RecoverySayFailed(error=error):
@@ -182,6 +191,9 @@ class SummarySink:
             case SilenceHangup(reason=reason):
                 s.final_state = "callback"
                 s.final_reason = reason
+            case CallerHungUp(reason=reason):
+                s.final_state = "caller_hangup"
+                s.final_reason = reason
             case OpenerPreflightFailed(error=error):
                 s.record_error(source="opener_audio", error=error)
             case EntrypointException(error=error):
@@ -208,6 +220,13 @@ class WebhookSink:
                 fire_webhook(
                     self._call_id,
                     "callback",
+                    {"reason": reason},
+                    summary=self._summary,
+                )
+            case CallerHungUp(reason=reason):
+                fire_webhook(
+                    self._call_id,
+                    "caller_hangup",
                     {"reason": reason},
                     summary=self._summary,
                 )

@@ -1,6 +1,8 @@
+import asyncio
 import logging
 import os
 import sys
+import time
 
 from dotenv import load_dotenv
 from livekit.agents import (
@@ -16,6 +18,7 @@ from livekit.agents import (
 )
 from livekit.plugins import ai_coustics, deepgram, elevenlabs, openai, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from livekit.rtc import ParticipantKind
 
 from call_event_sink import CallEventSink, ToolInvoked, production_sink
 from call_session import CallSession
@@ -370,11 +373,45 @@ async def fachwelt_agent(ctx: JobContext):
     call_id = new_call_id(ctx.room.name)
     ctx.log_context_fields = {"room": ctx.room.name, "call_id": call_id}
     _active_sessions += 1
+    call_start_ts = time.time()
     log_event(call_id, "call_started", room=ctx.room.name)
+
+    # Block 1 — register caller-presence listeners BEFORE ctx.connect() so we
+    # never miss a race where the SIP participant joins between connect() and
+    # the CallSession constructing its own listeners. Capture is via shared
+    # asyncio.Events that CallSession awaits.
+    caller_connected = asyncio.Event()
+    caller_disconnected = asyncio.Event()
+
+    def _on_participant_connected(participant) -> None:
+        if participant.kind == ParticipantKind.PARTICIPANT_KIND_SIP:
+            caller_connected.set()
+            log_event(
+                call_id,
+                "sip_participant_connected",
+                identity=participant.identity,
+            )
+
+    def _on_participant_disconnected(participant) -> None:
+        if participant.kind == ParticipantKind.PARTICIPANT_KIND_SIP:
+            caller_disconnected.set()
+            log_event(
+                call_id,
+                "sip_participant_disconnected",
+                identity=participant.identity,
+            )
+
+    ctx.room.on("participant_connected", _on_participant_connected)
+    ctx.room.on("participant_disconnected", _on_participant_disconnected)
 
     # Connect first so room.metadata (set by the dashboard token route) is
     # available before we build the session and assistant.
     await ctx.connect()
+
+    # Catch the race where the SIP participant joined between event-attach and
+    # connect: scan already-present remote participants once after connect.
+    for p in ctx.room.remote_participants.values():
+        _on_participant_connected(p)
 
     raw_metadata = getattr(ctx.room, "metadata", None) or ""
     runtime_cfg = load_runtime_config(
@@ -415,6 +452,9 @@ async def fachwelt_agent(ctx: JobContext):
         sink=sink,
         summary=summary,
         room_options=_build_room_options(),
+        caller_connected=caller_connected,
+        caller_disconnected=caller_disconnected,
+        call_start_ts=call_start_ts,
         on_finalize=_decrement_active,
     )
     await call.run()

@@ -66,6 +66,7 @@ class CallSummary:
     errors: list[dict[str, Any]] = field(default_factory=list)
     watchdog_triggers: int = 0
     webhook_failures: int = 0
+    time_to_first_audio_ms: int | None = None
 
     def record_error(self, source: str, error: str) -> None:
         self.errors.append({"source": source, "error": error, "ts": time.time()})
@@ -83,6 +84,7 @@ class CallSummary:
             errors=self.errors,
             watchdog_triggers=self.watchdog_triggers,
             webhook_failures=self.webhook_failures,
+            time_to_first_audio_ms=self.time_to_first_audio_ms,
         )
 
 
