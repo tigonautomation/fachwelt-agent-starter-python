@@ -1,0 +1,54 @@
+# Pronunciation Audit Wortliste
+# Format: text = was Lisa sagt, expect_contains = mind. EIN Token muss in Whisper/STT-Output erscheinen
+# Mehrere Aliase = Pass wenn ein beliebiger Token matcht (case-insensitive, normalisiert).
+
+- text: "Guten Tag, hier ist Lisa vom Fachwelt Verlag."
+  expect_contains: ["fachwelt", "verlag"]
+
+- text: "zweitausendsechsundzwanzig"
+  expect_contains: ["zweitausendsechsundzwanzig", "zwei tausend sechs und zwanzig"]
+
+- text: "fachwelt punkt de"
+  expect_contains: ["fachwelt punkt de", "fachwelt.de"]
+
+- text: "fachwelt-marketpleis punkt de"
+  expect_contains: ["marketpleis", "marketplace"]
+
+- text: "Marketpleis"
+  expect_contains: ["marketpleis", "marketplace"]
+
+- text: "Wir bauen einen Marketpleis für B2B-Hersteller."
+  expect_contains: ["marketpleis", "marketplace"]
+
+- text: "Es geht um B2B."
+  expect_contains: ["be zu be", "be-zu-be", "b2b"]
+
+- text: "Ich bin ein KI-Assistent vom Fachwelt Verlag."
+  expect_contains: ["ki", "ka i", "ka-i"]
+
+- text: "Vorab-Registrierung."
+  expect_contains: ["vorab", "registrierung"]
+
+- text: "Außendienst-Mitarbeiterin."
+  expect_contains: ["außendienst", "mitarbeiterin"]
+
+- text: "Verlagsverzeichnis."
+  expect_contains: ["verlagsverzeichnis", "verzeichnis"]
+
+- text: "Sales-Pipeline."
+  expect_contains: ["seels", "sales", "peipläjn", "pipeline"]
+
+- text: "CEO und CRM."
+  expect_contains: ["ze e o", "ceo", "ze er em", "crm"]
+
+- text: "Lead generieren."
+  expect_contains: ["lied", "lead"]
+
+- text: "Hätten Sie kurz zwei Minuten?"
+  expect_contains: ["zwei minuten"]
+
+- text: "max punkt mustermann at firma minus beispiel punkt de"
+  expect_contains: ["mustermann", "firma"]
+
+- text: "Im September zweitausendsechsundzwanzig startet der Marketpleis."
+  expect_contains: ["september", "marketpleis", "marketplace"]

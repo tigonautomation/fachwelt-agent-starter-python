@@ -1,0 +1,1483 @@
+warning: `VIRTUAL_ENV=/Library/Frameworks/Python.framework/Versions/3.13` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+============================= test session starts ==============================
+platform darwin -- Python 3.11.14, pytest-9.0.3, pluggy-1.6.0 -- /Users/edonmurati/projects/fachwelt/agent-starter-python/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/edonmurati/projects/fachwelt/agent-starter-python
+configfile: pyproject.toml
+plugins: xdist-3.8.0, asyncio-1.3.0, anyio-4.13.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collecting ... collected 28 items
+
+tests/test_conversations.py::test_conversation_scenario[technikfeindlich_robogespraech] FAILED [  3%]
+tests/test_conversations.py::test_conversation_scenario[eiliger_geschaeftsfuehrer_30_sekunden] FAILED [  7%]
+tests/test_conversations.py::test_conversation_scenario[falsche_person_sekretaerin] FAILED [ 10%]
+tests/test_conversations.py::test_conversation_scenario[aggressiv_frustriert_haeufen] FAILED [ 14%]
+tests/test_conversations.py::test_conversation_scenario[ueber_engagiert_alles_wissen] FAILED [ 17%]
+tests/test_conversations.py::test_conversation_scenario[dsgvo_profi_ai_act] FAILED [ 21%]
+tests/test_conversations.py::test_conversation_scenario[rueckruf_unklarer_zeitpunkt] FAILED [ 25%]
+tests/test_conversations.py::test_conversation_scenario[sprach_code_switch_englisch] FAILED [ 28%]
+tests/test_conversations.py::test_conversation_scenario[hintergrundlaerm_schlechte_verbindung] FAILED [ 32%]
+tests/test_conversations.py::test_conversation_scenario[email_tippfehler_korrektur] PASSED [ 35%]
+tests/test_conversations.py::test_conversation_scenario[korrigiert_sich_mid_sentence] FAILED [ 39%]
+tests/test_conversations.py::test_conversation_scenario[bestandskunde_kennt_fachwelt] FAILED [ 42%]
+tests/test_conversations.py::test_conversation_scenario[konkurrenzvergleich_wer_liefert_was] PASSED [ 46%]
+tests/test_conversations.py::test_conversation_scenario[unmoeglich_100_leads_garantie] FAILED [ 50%]
+tests/test_conversations.py::test_conversation_scenario[sofort_kaufen_zu_schnell] FAILED [ 53%]
+tests/test_conversations.py::test_conversation_scenario[privatperson_irrtuemlicherweise_gelistet] FAILED [ 57%]
+tests/test_conversations.py::test_conversation_scenario[dialektaler_sueddeutscher] FAILED [ 60%]
+tests/test_conversations.py::test_conversation_scenario[bestandskunde_beschwerde] PASSED [ 64%]
+tests/test_conversations.py::test_conversation_scenario[stiller_einsilbiger_gesprachspartner] FAILED [ 67%]
+tests/test_conversations.py::test_conversation_scenario[alles_per_post_kein_email] FAILED [ 71%]
+tests/test_conversations.py::test_conversation_scenario[fuenf_minuten_demo_wunsch] FAILED [ 75%]
+tests/test_conversations.py::test_conversation_scenario[zehn_referenzen_forderung] PASSED [ 78%]
+tests/test_conversations.py::test_conversation_scenario[konkurrenz_preis_vergleich] FAILED [ 82%]
+tests/test_conversations.py::test_conversation_scenario[hoeflich_aber_nein_klar] FAILED [ 85%]
+tests/test_conversations.py::test_conversation_scenario[multi_einwand_kette] FAILED [ 89%]
+tests/test_conversations.py::test_conversation_scenario[vertrag_sofort_abschliessen] FAILED [ 92%]
+tests/test_conversations.py::test_conversation_scenario[b2c_endkunden_online_shop] FAILED [ 96%]
+tests/test_conversations.py::test_conversation_scenario[rueckruf_konkreter_zeitpunkt] FAILED [100%]
+
+=================================== FAILURES ===================================
+__________ test_conversation_scenario[technikfeindlich_robogespraech] __________
+
+scenario = {'description': 'User lehnt grundsätzlich Gespräche mit KI/Robotern ab', 'expected_outcome': 'graceful_exit_no_tool', 'expected_tool_call': None, 'id': 'technikfeindlich_robogespraech', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+                await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+    
+            called = _function_call_names(all_events)
+            if expected_tool is None:
+                # Erwartet: KEIN qualifying tool-call (graceful exit ohne tool)
+                forbidden = {
+                    "mark_qualified_send_email",
+                    "schedule_callback",
+                    "mark_not_qualified",
+                }
+                actual_forbidden = [t for t in called if t in forbidden]
+>               assert not actual_forbidden, (
+                    f"Erwarteter Outcome=graceful_exit_no_tool, aber Tool-Calls "
+                    f"erfolgten: {actual_forbidden}"
+                )
+E               AssertionError: Erwarteter Outcome=graceful_exit_no_tool, aber Tool-Calls erfolgten: ['mark_not_qualified']
+E               assert not ['mark_not_qualified']
+
+tests/test_conversations.py:119: AssertionError
+______ test_conversation_scenario[eiliger_geschaeftsfuehrer_30_sekunden] _______
+
+scenario = {'description': 'GF hat genau 30 Sekunden und will den Kern sofort', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'eiliger_geschaeftsfuehrer_30_sekunden', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1161b6e90>, <livekit.plugins.openai.llm.LLM object at 0x115704750>)
+kwargs = {'intent': 'KI-Disclosure, ein-Satz-Pitch Fachwelt Marketplace, E-Mail-Angebot machen'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message includes a KI disclosure and a brief pitch about the Fachwelt Marketplace, but it does not include an email offer as requested by the intent.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Kurzer Hinweis vorab: ich bin eine KI vom Fachwelt Verlag, das Gespräch wird zur Qualitätssicherung aufgezeichnet. Es geht um den neuen Fachwelt Marketpleis, speziell für Hersteller — darf ich Ihnen dazu kurz eine Info geben?'], 'metrics': {'started_speaking_at': 1777491422.4918919, 'stopped_speaking_at': 1777491422.99262, 'llm_node_ttft': 0.7567207499960205, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+____________ test_conversation_scenario[falsche_person_sekretaerin] ____________
+
+scenario = {'description': 'Sekretärin nimmt ab, Inhaber ist nicht im Haus', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'falsche_person_sekretaerin', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1156f57d0>, <livekit.plugins.openai.llm.LLM object at 0x1161c2510>)
+kwargs = {'intent': 'KI-Disclosure, höflich nach bestem Weg fragen — E-Mail weiterleiten oder Rückruf wenn GF zurück'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message does not politely ask for the best way to disclose AI usage, nor does it inquire about forwarding an email or requesting a callback when the managing director returns. It simply thanks for the information and wishes a good day, which does not fulfill the intent.
+E           Context around failure:
+E               [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Danke für die Info. Dann möchte ich nichts aufhalten — einen angenehmen Tag noch.'], 'metrics': {'started_speaking_at': 1777491425.090602, 'stopped_speaking_at': 1777491425.903498, 'llm_node_ttft': 0.6990934579953318, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+E               [1] FunctionCallEvent(item={'arguments': '{"reason":"falsche Person"}', 'name': 'mark_not_qualified'})
+E               [2] FunctionCallOutputEvent(item={'name': 'mark_not_qualified', 'output': 'Marked not qualified. Continue to graceful exit.', 'is_error': False})
+E           >>> [3] ChatMessageEvent(item={'role': 'assistant', 'content': ['Danke für die Info. Dann möchte ich nichts aufhalten — einen angenehmen Tag noch.'], 'metrics': {'started_speaking_at': 1777491426.6927512, 'stopped_speaking_at': 1777491426.903785, 'llm_node_ttft': 0.7883974160067737, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+___________ test_conversation_scenario[aggressiv_frustriert_haeufen] ___________
+
+scenario = {'description': 'User ist sichtlich genervt und wird direkt unfreundlich', 'expected_outcome': 'not_qualified', 'expected_tool_call': 'mark_not_qualified', 'id': 'aggressiv_frustriert_haeufen', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1150e1010>, <livekit.plugins.openai.llm.LLM object at 0x115603c50>)
+kwargs = {'intent': 'Frustration respektieren, freundlich beenden'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message 'Sie hören nichts mehr von uns — auf Wiederhören.' does not respect frustration; it sounds abrupt and unfriendly, which does not align with the intent to respect frustration and end the conversation in a friendly manner.
+E           Context around failure:
+E               [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Verstehe, das nervt — ich nehm Sie aus dem Verzeichnis. Danke für Ihre Rückmeldung, einen ruhigen Tag noch.'], 'metrics': {'started_speaking_at': 1777491429.3105438, 'stopped_speaking_at': 1777491431.0599968, 'llm_node_ttft': 0.8692642500100192, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+E               [1] FunctionCallEvent(item={'arguments': '{"reason":"kein Interesse"}', 'name': 'mark_not_qualified'})
+E               [2] FunctionCallOutputEvent(item={'name': 'mark_not_qualified', 'output': 'Marked not qualified. Continue to graceful exit.', 'is_error': False})
+E           >>> [3] ChatMessageEvent(item={'role': 'assistant', 'content': ['Sie hören nichts mehr von uns — auf Wiederhören.'], 'metrics': {'started_speaking_at': 1777491431.868362, 'stopped_speaking_at': 1777491432.026897, 'llm_node_ttft': 0.8068596669909311, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+___________ test_conversation_scenario[ueber_engagiert_alles_wissen] ___________
+
+scenario = {'description': 'User ist begeistert und stellt sehr viele Detailfragen hintereinander', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'ueber_engagiert_alles_wissen', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1161b72d0>, <livekit.plugins.openai.llm.LLM object at 0x1168ce590>)
+kwargs = {'intent': 'E-Mail bestätigen und Bestätigung einholen'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message asks for confirmation of an email address but does not explicitly confirm the email or obtain a clear confirmation from the recipient. It only repeats the email and asks if it is correct, which is a partial step but does not fully fulfill the intent of confirming the email and obtaining a confirmation.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Ich wiederhole: thomas at fliesen minus engel punkt de. Stimmt das so?'], 'metrics': {'started_speaking_at': 1777491438.707312, 'stopped_speaking_at': 1777491438.997312, 'llm_node_ttft': 0.9303896670026006, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+________________ test_conversation_scenario[dsgvo_profi_ai_act] ________________
+
+scenario = {'description': 'DSGVO-bewusster User fragt nach Rechtsgrundlage für Aufzeichnung und KI-Einsatz', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'dsgvo_profi_ai_act', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x116878f90>, <livekit.plugins.openai.llm.LLM object at 0x1161ea6d0>)
+kwargs = {'intent': 'KI-Disclosure, Datenschutz-Frage ehrlich beantworten, schriftliche Info anbieten'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message provides a disclosure about being a KI assistant and mentions data recording and legal basis under DSGVO, but it does not explicitly offer a written information or clearly answer a data protection question honestly as requested by the intent.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Kurzer Hinweis vorab: ich bin ein KI-Assistent vom Fachwelt Verlag, das Gespräch wird zur Qualitätssicherung aufgezeichnet. Die Rechtsgrundlage ist berechtigtes Interesse gemäß Artikel sechs, Absatz eins, Buchstabe f der DSGVO. Wenn Sie Fragen dazu haben oder nicht möchten, dass aufgezeichnet wird, sag’s gern.'], 'metrics': {'started_speaking_at': 1777491441.828038, 'stopped_speaking_at': 1777491442.9870641, 'llm_node_ttft': 0.8259827080037212, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+___________ test_conversation_scenario[rueckruf_unklarer_zeitpunkt] ____________
+
+scenario = {'description': 'User will Rückruf, nennt aber keinen konkreten Zeitpunkt', 'expected_outcome': 'callback', 'expected_tool_call': 'schedule_callback', 'id': 'rueckruf_unklarer_zeitpunkt', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1161c3dd0>, <livekit.plugins.openai.llm.LLM object at 0x1161f20d0>)
+kwargs = {'intent': 'Rückruf bestätigen, höflich nach konkreterem Zeitfenster fragen (Vormittag/Nachmittag)'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message does not confirm a callback nor does it politely ask for a more specific time window such as morning or afternoon. It only wishes the recipient a pleasant day, which does not fulfill the intent.
+E           Context around failure:
+E               [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Alles klar, ich melde mich dann nächste Woche nochmal. Einen guten Tag.'], 'metrics': {'started_speaking_at': 1777491445.289362, 'stopped_speaking_at': 1777491446.110511, 'llm_node_ttft': 1.0272133749967907, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+E               [1] FunctionCallEvent(item={'arguments': '{"when":"nächste Woche","notes":"erneut anrufen, Zeitpunkt flexibler gewünscht"}', 'name': 'schedule_callback'})
+E               [2] FunctionCallOutputEvent(item={'name': 'schedule_callback', 'output': 'Callback noted. Continue to graceful exit.', 'is_error': False})
+E           >>> [3] ChatMessageEvent(item={'role': 'assistant', 'content': ['Ich wünsch Ihnen noch einen entspannten Tag.'], 'metrics': {'started_speaking_at': 1777491446.899992, 'stopped_speaking_at': 1777491447.051164, 'llm_node_ttft': 0.7885257080051815, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+___________ test_conversation_scenario[sprach_code_switch_englisch] ____________
+
+scenario = {'description': 'User wechselt mitten im Gespräch ins Englische', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'sprach_code_switch_englisch', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1161ac590>, <livekit.plugins.openai.llm.LLM object at 0x1168f7010>)
+kwargs = {'intent': 'KI-Disclosure auf Englisch oder zweisprachig, kurzer Pitch, anbieten auf Deutsch oder Englisch fortzufahren'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message does not provide an AI disclosure in English or bilingual format, nor does it offer to continue in German or English. It only gives a brief introduction in German without mentioning the AI nature explicitly or offering language options.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Kurzer Hinweis vorab: ich bin eine KI vom Fachwelt Verlag, das Gespräch wird zur Qualitätssicherung aufgezeichnet. Ich meld mich wegen dem neuen Marketpleis für Hersteller — ist das für Sie grundsätzlich interessant?'], 'metrics': {'started_speaking_at': 1777491449.359041, 'stopped_speaking_at': 1777491449.93837, 'llm_node_ttft': 0.8874738330050604, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+______ test_conversation_scenario[hintergrundlaerm_schlechte_verbindung] _______
+
+scenario = {'description': 'User kann kaum hören, bittet mehrfach um Wiederholung', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'hintergrundlaerm_schlechte_verbindung', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1168f7d90>, <livekit.plugins.openai.llm.LLM object at 0x1168cd1d0>)
+kwargs = {'intent': 'KI-Disclosure kurz, deutlich und langsam wiederholen, Angebot Rückruf zu besserem Zeitpunkt'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message does not include a short, clear, and slow repetition of the KI-Disclosure as required by the intent. It only asks if the current time is inconvenient and offers a callback or email, but does not fulfill the part about repeating the KI-Disclosure.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Verstanden, stört’s gerade? Soll ich später nochmal anrufen — oder lieber per E-Mail schicken, worum’s geht?'], 'metrics': {'started_speaking_at': 1777491451.8706071, 'stopped_speaking_at': 1777491452.3440661, 'llm_node_ttft': 0.7414200000057463, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+___________ test_conversation_scenario[korrigiert_sich_mid_sentence] ___________
+
+scenario = {'description': 'User korrigiert sich mitten im Satz bei der E-Mail-Angabe', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'korrigiert_sich_mid_sentence', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x11689e790>, <livekit.plugins.openai.llm.LLM object at 0x1168c1850>)
+kwargs = {'intent': 'Korrektur akzeptieren ohne Verwirrung, finale E-Mail bestätigen und Bestätigung einholen'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message asks for confirmation of the email address but does not explicitly accept the correction without confusion, nor does it clearly confirm the final email or explicitly request a confirmation in a clear manner.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Alles klar, ich hab "j punkt weber at weber minus fliesen punkt de" notiert. Stimmt das so?'], 'metrics': {'started_speaking_at': 1777491471.866781, 'stopped_speaking_at': 1777491472.282889, 'llm_node_ttft': 4.498356583004352, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29162, Requested 1796. Please try again in 1.916s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_98cded1567374344a434c53432129cd3, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29162, Requested 1796. Please try again in 1.916s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28990, Requested 1796. Please try again in 1.572s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_5d236a5d451343ea9913f59abaa24473, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28990, Requested 1796. Please try again in 1.572s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+___________ test_conversation_scenario[bestandskunde_kennt_fachwelt] ___________
+
+scenario = {'description': 'User ist bereits im Verlag gelistet und kennt Fachwelt gut', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'bestandskunde_kennt_fachwelt', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1161dc690>, <livekit.plugins.openai.llm.LLM object at 0x1174808d0>)
+kwargs = {'intent': 'KI-Disclosure, Unterschied Marketplace vs. Verlag-Inserat kurz erklären (neue digitale Plattform, September 2026), Mehrwert herausstellen ohne Details zu erfinden'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message introduces the speaker as an AI and mentions the new marketplace as a digital platform for direct sales from manufacturers to buyers, but it does not explain the difference between the marketplace and Verlag-Inserat, nor does it highlight the added value without inventing details as requested.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Freut mich, dass Sie uns kennen. Kurzer Hinweis vorab: ich bin eine KI vom Fachwelt Verlag, das Gespräch wird zur Qualitätssicherung aufgezeichnet. Zum Thema: Es geht um den neuen Marketpleis — eine digitale Plattform, wo Hersteller direkt an Facheinkäufer verkaufen können.'], 'metrics': {'started_speaking_at': 1777491474.5829592, 'stopped_speaking_at': 1777491475.6039119, 'llm_node_ttft': 1.1640740000002552, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28233, Requested 1794. Please try again in 54ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_66cdc34f4c1748368aaedc1b80788b97, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28233, Requested 1794. Please try again in 54ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+__________ test_conversation_scenario[unmoeglich_100_leads_garantie] ___________
+
+scenario = {'description': 'User fordert Garantie von 100 Leads pro Monat', 'expected_outcome': 'not_qualified', 'expected_tool_call': 'mark_not_qualified', 'id': 'unmoeglich_100_leads_garantie', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x10368ef90>, <livekit.plugins.openai.llm.LLM object at 0x1174112d0>)
+kwargs = {'intent': 'Entscheidung respektieren, freundlich verabschieden'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message offers a polite invitation to reconsider and a good wish, but it does not explicitly show respect for the recipient's decision or include a clear friendly farewell.
+E           Context around failure:
+E               [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Verstehe, das passt dann nicht — vielen Dank für Ihre Zeit, einen schönen Tag noch.'], 'metrics': {'started_speaking_at': 1777491501.806535, 'stopped_speaking_at': 1777491502.582728, 'llm_node_ttft': 0.7424698329996318, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+E               [1] FunctionCallEvent(item={'arguments': '{"reason":"kein Interesse"}', 'name': 'mark_not_qualified'})
+E               [2] FunctionCallOutputEvent(item={'name': 'mark_not_qualified', 'output': 'Marked not qualified. Continue to graceful exit.', 'is_error': False})
+E           >>> [3] ChatMessageEvent(item={'role': 'assistant', 'content': ["Wenn Sie's sich später anders überlegen, einfach beim Fachwelt Verlag melden — alles Gute für Sie."], 'metrics': {'started_speaking_at': 1777491505.779179, 'stopped_speaking_at': 1777491506.187847, 'llm_node_ttft': 3.1955626249982743, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28852, Requested 1880. Please try again in 1.464s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_93f3542fefdc411a9a1bd4259db3c153, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28852, Requested 1880. Please try again in 1.464s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29031, Requested 1880. Please try again in 1.822s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_6b52ae095ee94617a1ef2a8b7d5b044d, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29031, Requested 1880. Please try again in 1.822s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+_____________ test_conversation_scenario[sofort_kaufen_zu_schnell] _____________
+
+scenario = {'description': 'User will sofort kaufen / buchen noch im Anruf', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'sofort_kaufen_zu_schnell', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1150e3750>, <livekit.plugins.openai.llm.LLM object at 0x1161c2a10>)
+kwargs = {'intent': 'KI-Disclosure, Begeisterung freundlich anerkennen, erklären dass Registrierung per E-Mail-Link erfolgt, nach Adresse fragen'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message acknowledges interest in a friendly manner and asks for the email address, but it does not include the required AI disclosure or explain that registration is done via an email link.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Freut mich, dass Sie Interesse haben — darf ich kurz Ihre E-Mail aufnehmen, dann schick ich alle Infos zur Vorab-Registrierung rüber?'], 'metrics': {'started_speaking_at': 1777491511.925144, 'stopped_speaking_at': 1777491512.398632, 'llm_node_ttft': 3.550141707994044, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28515, Requested 1789. Please try again in 608ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_695b93776c14485fa0299a211ef63e9b, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28515, Requested 1789. Please try again in 608ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28310, Requested 1789. Please try again in 198ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_55d254af6a524166be5166640245710e, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28310, Requested 1789. Please try again in 198ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+_____ test_conversation_scenario[privatperson_irrtuemlicherweise_gelistet] _____
+
+scenario = {'description': 'Angerufener ist Privatperson, kein Hersteller oder Anbieter', 'expected_outcome': 'not_qualified', 'expected_tool_call': 'mark_not_qualified', 'id': 'privatperson_irrtuemlicherweise_gelistet', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1161b77d0>, <livekit.plugins.openai.llm.LLM object at 0x1168f7b50>)
+kwargs = {'intent': 'Entschuldigung für Störung, kein B2B-Fit erkennen, freundlich verabschieden'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message does not include an explicit apology for the disturbance, does not clearly state that there is no B2B fit, and the tone is somewhat abrupt rather than friendly. Therefore, it does not fulfill the intent of apologizing for the disturbance, indicating no B2B fit, and ending the conversation in a friendly manner.
+E           Context around failure:
+E               [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Verstehe, dann ist da wohl was im Verzeichnis verrutscht — danke, dass Sie’s sagen. Einen schönen Tag noch, und Entschuldigung für die Störung.'], 'metrics': {'started_speaking_at': 1777491514.610261, 'stopped_speaking_at': 1777491516.066599, 'llm_node_ttft': 0.6791762500070035, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+E               [1] FunctionCallEvent(item={'arguments': '{"reason":"kein Hersteller"}', 'name': 'mark_not_qualified'})
+E               [2] FunctionCallOutputEvent(item={'name': 'mark_not_qualified', 'output': 'Marked not qualified. Continue to graceful exit.', 'is_error': False})
+E           >>> [3] ChatMessageEvent(item={'role': 'assistant', 'content': ['Falls noch mal sowas kommen sollte, bitte gern einfach auflegen. Alles Gute für Sie.'], 'metrics': {'started_speaking_at': 1777491519.703958, 'stopped_speaking_at': 1777491520.015069, 'llm_node_ttft': 3.6363264579995302, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28587, Requested 1841. Please try again in 856ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_65fb52fa951a4e9f94475623ceac393a, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28587, Requested 1841. Please try again in 856ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28720, Requested 1841. Please try again in 1.122s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_5096954754c44e38909e0407c345b6d3, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28720, Requested 1841. Please try again in 1.122s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+____________ test_conversation_scenario[dialektaler_sueddeutscher] _____________
+
+scenario = {'description': 'User antwortet auf Schwäbisch/Bayrisch, versteht aber den Kontext', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'dialektaler_sueddeutscher', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1168bf1d0>, <livekit.plugins.openai.llm.LLM object at 0x1161dda10>)
+kwargs = {'intent': 'KI-Disclosure, Pitch in normalem Hochdeutsch, respektvoller Umgang mit Dialekt'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message does not fulfill the intent because it does not contain a clear pitch in normal High German (Hochdeutsch). The message includes a dialectal phrase 'ich meld mich' which is not respectful to the intent's requirement for normal Hochdeutsch. Also, the pitch is not clearly presented, and the message lacks a respectful handling of dialect as requested.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Danke, dass Sie kurz Zeit haben—kurzer Hinweis vorab: ich bin eine KI vom Fachwelt Verlag, das Gespräch wird zur Qualitätssicherung aufgezeichnet. Ich meld mich, weil wir einen neuen Marketpleis für Hersteller starten.'], 'metrics': {'started_speaking_at': 1777491522.977437, 'stopped_speaking_at': 1777491523.445164, 'llm_node_ttft': 1.1753644999989774, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28265, Requested 1785. Please try again in 100ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_7ffdfb4d4f124e3da00eee5b34560070, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28265, Requested 1785. Please try again in 100ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+_______ test_conversation_scenario[stiller_einsilbiger_gesprachspartner] _______
+
+scenario = {'description': 'User antwortet nur einsilbig, sehr kurz', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'stiller_einsilbiger_gesprachspartner', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1174b5b90>, <livekit.plugins.openai.llm.LLM object at 0x116886210>)
+kwargs = {'intent': 'KI-Disclosure, kurzer Pitch Fachwelt Marketplace, offene Frage stellen'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message only includes a KI disclosure and a question about recording consent. It does not include a short pitch about the Fachwelt Marketplace, which is part of the intent, nor does it include an open question related to the Fachwelt Marketplace.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Kurzer Hinweis vorab: ich bin eine KI vom Fachwelt Verlag, das Gespräch wird zur Qualitätssicherung aufgezeichnet — passt das für Sie?'], 'metrics': {'started_speaking_at': 1777491546.5737972, 'stopped_speaking_at': 1777491546.812761, 'llm_node_ttft': 3.2612821660004556, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28520, Requested 1773. Please try again in 586ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_4ebffb8a27fb412ab55a0a580a237dfb, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28520, Requested 1773. Please try again in 586ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28366, Requested 1773. Please try again in 278ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_9f379b1c82bd42eab67e81c80726fac3, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28366, Requested 1773. Please try again in 278ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+____________ test_conversation_scenario[alles_per_post_kein_email] _____________
+
+scenario = {'description': 'GF will ausschließlich postalische Kommunikation, keine E-Mail', 'expected_outcome': 'not_qualified', 'expected_tool_call': 'mark_not_qualified', 'id': 'alles_per_post_kein_email', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1161ea510>, <livekit.plugins.openai.llm.LLM object at 0x1174c6d10>)
+kwargs = {'intent': 'KI-Disclosure, verständnisvoll reagieren, ehrlich sagen dass Versand aktuell per E-Mail erfolgt, Rückruf oder Notiz-Weiterleitung anbieten'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message does not fulfill the intent because it does not mention that shipping is currently done via email, nor does it offer a callback or forwarding a note. It also lacks a compassionate or understanding response related to the KI-Disclosure.
+E           Context around failure:
+E               [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Ich versteh, das passt dann vermutlich nicht — wir verschicken die Infos nur digital. Vielen Dank für Ihre Zeit, einen schönen Tag noch.'], 'metrics': {'started_speaking_at': 1777491549.12511, 'stopped_speaking_at': 1777491550.1619709, 'llm_node_ttft': 0.8823816249932861, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+E               [1] FunctionCallEvent(item={'arguments': '{"reason":"unmögliche Forderung"}', 'name': 'mark_not_qualified'})
+E               [2] FunctionCallOutputEvent(item={'name': 'mark_not_qualified', 'output': 'Marked not qualified. Continue to graceful exit.', 'is_error': False})
+E           >>> [3] ChatMessageEvent(item={'role': 'assistant', 'content': ['Verstehe, das passt dann nicht — vielen Dank für Ihre Zeit, einen schönen Tag noch.'], 'metrics': {'started_speaking_at': 1777491553.529911, 'stopped_speaking_at': 1777491553.758456, 'llm_node_ttft': 3.366817500005709, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29000, Requested 1839. Please try again in 1.678s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_d4c27c2a535044db8a682748e8192f9a, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29000, Requested 1839. Please try again in 1.678s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28844, Requested 1839. Please try again in 1.366s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_3cae5067ae4e4440badc657d15804ba5, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28844, Requested 1839. Please try again in 1.366s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+____________ test_conversation_scenario[fuenf_minuten_demo_wunsch] _____________
+
+scenario = {'description': 'User interessiert sich, will aber erst eine Demo sehen', 'expected_outcome': 'callback', 'expected_tool_call': 'schedule_callback', 'id': 'fuenf_minuten_demo_wunsch', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1174e6110>, <livekit.plugins.openai.llm.LLM object at 0x116711110>)
+kwargs = {'intent': 'KI-Disclosure, Demowunsch anerkennen, ehrlich sagen dass Lisa keine Demo zeigen kann, Rückruf durch Kollegen oder Info-Mail anbieten'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message acknowledges the demo request and honestly states that there is no public demo available yet, but it does not mention Lisa or offer a callback by a colleague. It only offers to send information by email, so it partially fulfills the intent but misses key elements.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Versteh ich, aktuell gibt’s noch keine öffentliche Demo—der Marketpleis startet erst im September. Darf ich Ihnen vorab die Infos einfach per E-Mail schicken, dann können Sie’s in Ruhe durchgehen?'], 'metrics': {'started_speaking_at': 1777491558.315346, 'stopped_speaking_at': 1777491558.9039948, 'llm_node_ttft': 3.5238657079898985, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29222, Requested 1793. Please try again in 2.03s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_fbc9b7ab420d4dfb86cf74dbd5873614, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29222, Requested 1793. Please try again in 2.03s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29090, Requested 1793. Please try again in 1.766s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_f46d5413150b455c8c0b4d9d824c25d1, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 29090, Requested 1793. Please try again in 1.766s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+____________ test_conversation_scenario[konkurrenz_preis_vergleich] ____________
+
+scenario = {'description': 'User fragt nach den Konditionen von Wettbewerbern als Vergleich', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'konkurrenz_preis_vergleich', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1168fdb10>, <livekit.plugins.openai.llm.LLM object at 0x11670dc90>)
+kwargs = {'intent': 'KI-Disclosure, Preisvergleich zu Konkurrenten nicht anstellen (keine Daten), Fachwelt-Registrierung als kostenlos hervorheben, Details schriftlich anbieten'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message highlights that the pre-registration is free and that fees apply only from September during active sales, and it offers to send conditions in writing. However, it does not address the KI-Disclosure, does not mention that no price comparison with competitors is made due to lack of data, and does not explicitly emphasize the free registration for the professional community as required by the intent.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Vorab-Registrierung im Marketpleis ist kostenlos, Gebühren erst ab September beim aktiven Verkauf. Die Konditionen bekommen Sie vom Team schriftlich. Welche E-Mail darf ich dafür nehmen?'], 'metrics': {'started_speaking_at': 1777491575.414649, 'stopped_speaking_at': 1777491575.805568, 'llm_node_ttft': 1.3260557079920545, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28299, Requested 1788. Please try again in 174ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_e9523046dcdc451c9b7386d8676ccb58, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28299, Requested 1788. Please try again in 174ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+_____________ test_conversation_scenario[hoeflich_aber_nein_klar] ______________
+
+scenario = {'description': 'User ist höflich aber signalisiert klar kein Interesse', 'expected_outcome': 'not_qualified', 'expected_tool_call': 'mark_not_qualified', 'id': 'hoeflich_aber_nein_klar', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1161f2a90>, <livekit.plugins.openai.llm.LLM object at 0x1168b9f50>)
+kwargs = {'intent': 'KI-Disclosure, Verständnis zeigen, kurz Aufwand als minimal darstellen (kostenlose Registrierung), nicht pushen'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message does not fulfill the intent as it does not include any KI-disclosure, does not show understanding, does not mention the minimal effort or free registration, and does not avoid pushing. It is simply a closing statement without addressing the intent requirements.
+E           Context around failure:
+E               [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Verstehe, das passt dann nicht — vielen Dank für Ihre Zeit, einen schönen Tag noch.'], 'metrics': {'started_speaking_at': 1777491581.139616, 'stopped_speaking_at': 1777491581.561592, 'llm_node_ttft': 3.3478839590097778, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+E               [1] FunctionCallEvent(item={'arguments': '{"reason":"kein Interesse"}', 'name': 'mark_not_qualified'})
+E               [2] FunctionCallOutputEvent(item={'name': 'mark_not_qualified', 'output': 'Marked not qualified. Continue to graceful exit.', 'is_error': False})
+E           >>> [3] ChatMessageEvent(item={'role': 'assistant', 'content': ['Falls sich später was ändert, gern melden — auf Wiederhören.'], 'metrics': {'started_speaking_at': 1777491585.2716959, 'stopped_speaking_at': 1777491585.400042, 'llm_node_ttft': 3.7089207919925684, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28589, Requested 1792. Please try again in 762ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_1ecc0ba552254a2d8b9cf0450aae60a8, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28589, Requested 1792. Please try again in 762ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28441, Requested 1792. Please try again in 466ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_508cc7645b0f492dabc019cf47890807, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28441, Requested 1792. Please try again in 466ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28489, Requested 1828. Please try again in 634ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_7a08fdcd2e9243268a28467391996d10, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28489, Requested 1828. Please try again in 634ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28666, Requested 1828. Please try again in 988ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_7d808273a7274c3c8f32fbada705d8bb, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28666, Requested 1828. Please try again in 988ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+_______________ test_conversation_scenario[multi_einwand_kette] ________________
+
+scenario = {'description': 'User bringt in drei aufeinanderfolgenden Turns verschiedene Einwände', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'multi_einwand_kette', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x11744ad10>, <livekit.plugins.openai.llm.LLM object at 0x1174eeb90>)
+kwargs = {'intent': 'KI-Disclosure, Skepsis anerkennen ohne Gegenargument, Fachwelt Verlag kurz einordnen'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message acknowledges skepticism and briefly mentions the publisher as established, but it does not clearly provide a KI-disclosure (disclosure about AI involvement) nor does it adequately contextualize the Fachwelt Verlag. The marketplace is mentioned as new, but the Fachwelt Verlag is not sufficiently explained or categorized.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Ich versteh die Skepsis — der Verlag ist etabliert, der Marketpleis selbst aber ganz neu. Ich kann Ihnen die Infos gern einfach schriftlich schicken, wenn Sie möchten.'], 'metrics': {'started_speaking_at': 1777491590.025204, 'stopped_speaking_at': 1777491590.472276, 'llm_node_ttft': 3.401915458001895, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28477, Requested 1780. Please try again in 514ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_059e1bfb46674385b228559a542d7864, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28477, Requested 1780. Please try again in 514ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28335, Requested 1780. Please try again in 230ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_5f1883471f9d4e0ab308fb4261009482, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28335, Requested 1780. Please try again in 230ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+___________ test_conversation_scenario[vertrag_sofort_abschliessen] ____________
+
+scenario = {'description': 'User will sofort einen verbindlichen Vertrag abschließen', 'expected_outcome': 'qualified', 'expected_tool_call': 'mark_qualified_send_email', 'id': 'vertrag_sofort_abschliessen', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1168bcad0>, <livekit.plugins.openai.llm.LLM object at 0x1174ce450>)
+kwargs = {'intent': 'KI-Disclosure, Begeisterung anerkennen, klar kommunizieren dass Vertragsabschluss nicht per Telefon möglich ist, E-Mail-Registrierung als nächsten Schritt anbieten'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message does not include any KI-Disclosure (disclosure about AI usage). It acknowledges interest but does not explicitly express enthusiasm. It clearly states that the contract is not concluded by phone, which is correct. It offers email registration as the next step. Therefore, it partially fulfills the intent but misses KI-Disclosure and explicit enthusiasm.
+E           Context around failure:
+E           >>> [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Danke für Ihr Interesse. Die Vorab-Registrierung beim Marketpleis ist kostenlos und unverbindlich — der Vertrag kommt erst beim aktiven Verkauf ab September zustande. Ich kann Ihnen die Details schriftlich schicken, damit Sie alles in Ruhe prüfen können. Darf ich dazu Ihre E-Mail haben?'], 'metrics': {'started_speaking_at': 1777491592.404363, 'stopped_speaking_at': 1777491592.916241, 'llm_node_ttft': 0.6850163330091164, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+____________ test_conversation_scenario[b2c_endkunden_online_shop] _____________
+
+scenario = {'description': 'Firma verkauft ausschließlich über eigenen B2C-Webshop', 'expected_outcome': 'not_qualified', 'expected_tool_call': 'mark_not_qualified', 'id': 'b2c_endkunden_online_shop', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1167a5f10>, <livekit.plugins.openai.llm.LLM object at 0x116747490>)
+kwargs = {'intent': 'KI-Disclosure, kein B2B-Fit erkennen, kurzer freundlicher Abschied'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message only contains a short friendly farewell but does not include any KI-Disclosure or indication that no B2B fit was recognized, which are required by the intent.
+E           Context around failure:
+E               [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Verstehe, dann passt unser Marketpleis für Sie nicht — vielen Dank für Ihre Zeit, einen guten Tag noch.'], 'metrics': {'started_speaking_at': 1777491597.5823538, 'stopped_speaking_at': 1777491598.5689118, 'llm_node_ttft': 3.2965392080077436, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+E               [1] FunctionCallEvent(item={'arguments': '{"reason":"kein B2B-Fit"}', 'name': 'mark_not_qualified'})
+E               [2] FunctionCallOutputEvent(item={'name': 'mark_not_qualified', 'output': 'Marked not qualified. Continue to graceful exit.', 'is_error': False})
+E           >>> [3] ChatMessageEvent(item={'role': 'assistant', 'content': ['Nochmals danke, auf Wiederhören.'], 'metrics': {'started_speaking_at': 1777491601.936445, 'stopped_speaking_at': 1777491601.993748, 'llm_node_ttft': 3.364523584008566, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28925, Requested 1790. Please try again in 1.43s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_1dc72376a47898d9acb7755c445038f1, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28925, Requested 1790. Please try again in 1.43s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28761, Requested 1790. Please try again in 1.102s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_a390ed1260444445b0746667f1e20fbf, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28761, Requested 1790. Please try again in 1.102s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28578, Requested 1830. Please try again in 816ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_9726718bb20b4768a1af02784b569d26, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28578, Requested 1830. Please try again in 816ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28423, Requested 1830. Please try again in 505ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_8fe8c7205cc9456392ae048d258dc6b4, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28423, Requested 1830. Please try again in 505ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+___________ test_conversation_scenario[rueckruf_konkreter_zeitpunkt] ___________
+
+scenario = {'description': 'User will Rückruf mit sehr konkretem Zeitpunkt', 'expected_outcome': 'callback', 'expected_tool_call': 'schedule_callback', 'id': 'rueckruf_konkreter_zeitpunkt', ...}
+
+    @pytest.mark.parametrize(
+        "scenario",
+        SCENARIOS,
+        ids=[s["id"] for s in SCENARIOS],
+    )
+    @pytest.mark.asyncio
+    async def test_conversation_scenario(scenario: dict) -> None:
+        """Ein Multi-Turn-Konversationstest pro Szenario."""
+        turns = scenario["turns"]
+        expected_tool = scenario.get("expected_tool_call")  # may be None
+    
+        async with (
+            _agent_llm() as agent_llm,
+            _judge_llm() as judge_llm,
+            AgentSession(llm=agent_llm) as session,
+        ):
+            await session.start(FachweltAssistant())
+    
+            all_events: list = []
+    
+            for i, turn in enumerate(turns):
+                result = await session.run(user_input=turn["user"])
+                all_events.extend(result.events)
+    
+                idx = _last_assistant_message_index(result.events)
+                if idx is None:
+                    if i < len(turns) - 1:
+                        continue
+                    pytest.fail(
+                        f"Turn {i + 1}: keine assistant-message — "
+                        f"events={[type(e).__name__ for e in result.events]}"
+                    )
+    
+                assert_obj = ChatMessageAssert(result.events[idx], result.expect, idx)
+>               await assert_obj.judge(judge_llm, intent=turn["expect_intent"])
+
+tests/test_conversations.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (<livekit.agents.voice.run_result.ChatMessageAssert object at 0x1156ae950>, <livekit.plugins.openai.llm.LLM object at 0x1174e7810>)
+kwargs = {'intent': 'KI-Disclosure kurz, Rückruf-Termin Freitag 10 Uhr bestätigen, kurzer freundlicher Abschied'}
+
+    @functools.wraps(func)  # type: ignore
+    async def async_wrapper(*args: Pargs, **kwargs: Pkwargs) -> R:  # pyright: ignore [reportInvalidTypeVarUse]
+        with self._recreate_cm():  # type: ignore
+>           return await func(*args, **kwargs)  # type: ignore
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Judgement failed: The message only contains a short friendly farewell but does not include the KI-Disclosure or confirmation of the callback appointment for Friday at 10 o'clock.
+E           Context around failure:
+E               [0] ChatMessageEvent(item={'role': 'assistant', 'content': ['Alles klar, ich melde mich dann am Freitag um zehn Uhr morgens. Einen guten Tag.'], 'metrics': {'started_speaking_at': 1777491606.625202, 'stopped_speaking_at': 1777491607.482213, 'llm_node_ttft': 3.2463047500059474, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+E               [1] FunctionCallEvent(item={'arguments': '{"when":"Freitag um 10 Uhr morgens","notes":"Rückruf wegen Marketpleis-Angebot Fachwelt Verlag"}', 'name': 'schedule_callback'})
+E               [2] FunctionCallOutputEvent(item={'name': 'schedule_callback', 'output': 'Callback noted. Continue to graceful exit.', 'is_error': False})
+E           >>> [3] ChatMessageEvent(item={'role': 'assistant', 'content': ['Bis Freitag, auf Wiederhören.'], 'metrics': {'started_speaking_at': 1777491610.7442791, 'stopped_speaking_at': 1777491610.827497, 'llm_node_ttft': 3.261035000003176, 'llm_metadata': {'model_name': 'gpt-4.1', 'model_provider': 'api.openai.com'}}})
+
+.venv/lib/python3.11/site-packages/opentelemetry/util/_decorator.py:71: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28690, Requested 1793. Please try again in 966ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_46ee8761bb8644e08fa0137481f5277b, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28690, Requested 1793. Please try again in 966ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28527, Requested 1793. Please try again in 640ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_74387f9dc36f4348aaac7b8cfb350867, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28527, Requested 1793. Please try again in 640ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28449, Requested 1826. Please try again in 550ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_6573f5d2da70433ebb56e368eef83468, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28449, Requested 1826. Please try again in 550ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 0.1s
+WARNING  livekit.agents:llm.py:241 failed to generate LLM completion: message="Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28652, Requested 1826. Please try again in 956ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}", status_code=429, retryable=True, request_id=req_76192642c4014517bacadd7625c1107f, body={'message': 'Rate limit reached for gpt-4.1 in organization org-haQ0GUmGkwm8V065ouBnRKre on tokens per min (TPM): Limit 30000, Used 28652, Requested 1826. Please try again in 956ms. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}, retrying in 2.0s
+=========================== short test summary info ============================
+FAILED tests/test_conversations.py::test_conversation_scenario[technikfeindlich_robogespraech]
+FAILED tests/test_conversations.py::test_conversation_scenario[eiliger_geschaeftsfuehrer_30_sekunden]
+FAILED tests/test_conversations.py::test_conversation_scenario[falsche_person_sekretaerin]
+FAILED tests/test_conversations.py::test_conversation_scenario[aggressiv_frustriert_haeufen]
+FAILED tests/test_conversations.py::test_conversation_scenario[ueber_engagiert_alles_wissen]
+FAILED tests/test_conversations.py::test_conversation_scenario[dsgvo_profi_ai_act]
+FAILED tests/test_conversations.py::test_conversation_scenario[rueckruf_unklarer_zeitpunkt]
+FAILED tests/test_conversations.py::test_conversation_scenario[sprach_code_switch_englisch]
+FAILED tests/test_conversations.py::test_conversation_scenario[hintergrundlaerm_schlechte_verbindung]
+FAILED tests/test_conversations.py::test_conversation_scenario[korrigiert_sich_mid_sentence]
+FAILED tests/test_conversations.py::test_conversation_scenario[bestandskunde_kennt_fachwelt]
+FAILED tests/test_conversations.py::test_conversation_scenario[unmoeglich_100_leads_garantie]
+FAILED tests/test_conversations.py::test_conversation_scenario[sofort_kaufen_zu_schnell]
+FAILED tests/test_conversations.py::test_conversation_scenario[privatperson_irrtuemlicherweise_gelistet]
+FAILED tests/test_conversations.py::test_conversation_scenario[dialektaler_sueddeutscher]
+FAILED tests/test_conversations.py::test_conversation_scenario[stiller_einsilbiger_gesprachspartner]
+FAILED tests/test_conversations.py::test_conversation_scenario[alles_per_post_kein_email]
+FAILED tests/test_conversations.py::test_conversation_scenario[fuenf_minuten_demo_wunsch]
+FAILED tests/test_conversations.py::test_conversation_scenario[konkurrenz_preis_vergleich]
+FAILED tests/test_conversations.py::test_conversation_scenario[hoeflich_aber_nein_klar]
+FAILED tests/test_conversations.py::test_conversation_scenario[multi_einwand_kette]
+FAILED tests/test_conversations.py::test_conversation_scenario[vertrag_sofort_abschliessen]
+FAILED tests/test_conversations.py::test_conversation_scenario[b2c_endkunden_online_shop]
+FAILED tests/test_conversations.py::test_conversation_scenario[rueckruf_konkreter_zeitpunkt]
+=================== 24 failed, 4 passed in 199.72s (0:03:19) ===================
