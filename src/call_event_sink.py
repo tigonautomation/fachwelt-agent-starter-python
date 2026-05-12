@@ -230,6 +230,22 @@ class WebhookSink:
                     {"reason": reason},
                     summary=self._summary,
                 )
+            case WatchdogTriggered(kind=kind, elapsed=elapsed, threshold=threshold):
+                # Without this, watchdog recovery ends with no CRM notification
+                # because _watch_caller_disconnect sees final_state=="technical_callback"
+                # and skips its own CallerHungUp emit. Lead stays 'calling' until
+                # recovery cron at 10min. Route through caller_hangup so dashboard
+                # marks the lead failed (same disposition as a stuck timeout).
+                fire_webhook(
+                    self._call_id,
+                    "caller_hangup",
+                    {
+                        "reason": f"watchdog_{kind}",
+                        "elapsed": elapsed,
+                        "threshold": threshold,
+                    },
+                    summary=self._summary,
+                )
 
 
 class CompositeSink:
