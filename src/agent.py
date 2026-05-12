@@ -424,6 +424,17 @@ async def fachwelt_agent(ctx: JobContext):
             attrs=dict(getattr(participant, "attributes", {}) or {}),
         )
         if participant.kind == ParticipantKind.PARTICIPANT_KIND_SIP:
+            # Dashboard uses waitUntilAnswered=true on createSipParticipant, so
+            # SIP participant joins room ONLY after answered. participant_connected
+            # for SIP kind = guaranteed pickup. Set directly, keep callStatus check
+            # as belt-and-suspenders.
+            if not caller_connected.is_set():
+                caller_connected.set()
+                log_event(
+                    call_id,
+                    "sip_pickup_via_participant_connected",
+                    identity=participant.identity,
+                )
             _check_sip_status(participant, source="participant_connected")
 
     def _on_participant_disconnected(participant) -> None:

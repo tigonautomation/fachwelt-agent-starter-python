@@ -44,6 +44,11 @@ from watchdog import CallWatchdog
 # played ONLY after `sip.callStatus="active"` — never on timeout.
 CALLER_PICKUP_TIMEOUT_S = 60.0
 
+# Small grace pause after pickup signal before TTS starts. Real callers say
+# "hallo?" right after answering — talking instantly feels robotic and clips
+# their greeting. 1.5s lets the human finish their hello before Lisa opens.
+POST_PICKUP_GRACE_S = 1.5
+
 # C13 — if the user is silent for this long after the opener finishes, prompt
 # them once. After SILENCE_HANGUP_THRESHOLD_S more, give up and mark a callback.
 # Callers occasionally drop silently (no SIP BYE) — without this watchdog the
@@ -134,6 +139,7 @@ class CallSession:
                 self._sink.emit(CallerHungUp(reason="pickup_timeout"))
                 await self._session.aclose()
                 return
+            await asyncio.sleep(POST_PICKUP_GRACE_S)
             await self._play_opener()
             self._summary.time_to_first_audio_ms = int(
                 (time.time() - self._call_start_ts) * 1000
