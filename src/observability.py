@@ -31,6 +31,12 @@ WEBHOOK_MAX_RETRIES = int(os.getenv("N8N_WEBHOOK_MAX_RETRIES", "3"))
 FAILED_WEBHOOK_LOG = os.getenv(
     "N8N_WEBHOOK_FAILURE_LOG", "/tmp/lisa-crm-failed-writes.jsonl"
 )
+# Dashboard's /api/voice-outcome route guards with verifyBearer("VOICE_OUTCOME_SECRET",
+# "x-voice-secret"). Without this header, the dashboard returns 401 and our retry
+# loop bails (status<500 = no retry) → caller_hangup / qualified webhooks silently
+# disappear and Lead.status stays 'calling' forever. Send the bearer in both header
+# variants so the same env var works against either check path.
+WEBHOOK_AUTH_TOKEN = os.getenv("VOICE_OUTCOME_SECRET", "").strip()
 
 
 def log_event(call_id: str, event: str, **fields: Any) -> None:
@@ -93,10 +99,14 @@ async def _post_webhook_with_retry(
 ) -> None:
     """Post to CRM webhook with exponential backoff. Last-resort: jsonl spool."""
     backoff = 1.0
+    headers: dict[str, str] = {}
+    if WEBHOOK_AUTH_TOKEN:
+        headers["x-voice-secret"] = WEBHOOK_AUTH_TOKEN
+        headers["authorization"] = f"Bearer {WEBHOOK_AUTH_TOKEN}"
     for attempt in range(1, WEBHOOK_MAX_RETRIES + 1):
         try:
             async with httpx.AsyncClient(timeout=WEBHOOK_TIMEOUT_S) as client:
-                resp = await client.post(url, json=payload)
+                resp = await client.post(url, json=payload, headers=headers)
                 if resp.status_code < 500:
                     if resp.status_code >= 400:
                         log_event(
