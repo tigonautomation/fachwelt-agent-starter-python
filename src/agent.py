@@ -385,10 +385,19 @@ async def fachwelt_agent(ctx: JobContext):
     caller_connected = asyncio.Event()
     caller_disconnected = asyncio.Event()
 
-    def _check_sip_status(participant) -> None:
+    def _check_sip_status(participant, source: str) -> None:
         if participant.kind != ParticipantKind.PARTICIPANT_KIND_SIP:
             return
-        status = (participant.attributes or {}).get("sip.callStatus")
+        attrs = dict(participant.attributes or {})
+        status = attrs.get("sip.callStatus")
+        log_event(
+            call_id,
+            "sip_attrs_snapshot",
+            source=source,
+            identity=participant.identity,
+            status=status,
+            attrs=attrs,
+        )
         if status == "active" and not caller_connected.is_set():
             caller_connected.set()
             log_event(call_id, "sip_call_active", identity=participant.identity)
@@ -397,30 +406,61 @@ async def fachwelt_agent(ctx: JobContext):
             log_event(call_id, "sip_call_hangup", identity=participant.identity)
 
     def _on_participant_attributes_changed(changed, participant) -> None:
-        _check_sip_status(participant)
+        log_event(
+            call_id,
+            "participant_attrs_changed",
+            identity=getattr(participant, "identity", "?"),
+            kind=str(getattr(participant, "kind", "?")),
+            changed=dict(changed or {}),
+        )
+        _check_sip_status(participant, source="attrs_changed")
 
     def _on_participant_connected(participant) -> None:
+        log_event(
+            call_id,
+            "participant_connected_raw",
+            identity=getattr(participant, "identity", "?"),
+            kind=str(getattr(participant, "kind", "?")),
+            attrs=dict(getattr(participant, "attributes", {}) or {}),
+        )
         if participant.kind == ParticipantKind.PARTICIPANT_KIND_SIP:
-            log_event(
-                call_id,
-                "sip_participant_joined",
-                identity=participant.identity,
-                status=(participant.attributes or {}).get("sip.callStatus"),
-            )
-            _check_sip_status(participant)
+            _check_sip_status(participant, source="participant_connected")
 
     def _on_participant_disconnected(participant) -> None:
+        log_event(
+            call_id,
+            "participant_disconnected_raw",
+            identity=getattr(participant, "identity", "?"),
+            kind=str(getattr(participant, "kind", "?")),
+        )
         if participant.kind == ParticipantKind.PARTICIPANT_KIND_SIP:
             caller_disconnected.set()
+
+    def _on_track_subscribed(track, pub, participant) -> None:
+        log_event(
+            call_id,
+            "track_subscribed_raw",
+            identity=getattr(participant, "identity", "?"),
+            kind=str(getattr(participant, "kind", "?")),
+            track_kind=str(getattr(track, "kind", "?")),
+        )
+        # Fallback pickup signal: first audio track from SIP participant = media flowing.
+        if (
+            participant.kind == ParticipantKind.PARTICIPANT_KIND_SIP
+            and not caller_connected.is_set()
+            and str(getattr(track, "kind", "")).lower().endswith("audio")
+        ):
+            caller_connected.set()
             log_event(
                 call_id,
-                "sip_participant_disconnected",
+                "sip_pickup_via_track_subscribed",
                 identity=participant.identity,
             )
 
     ctx.room.on("participant_attributes_changed", _on_participant_attributes_changed)
     ctx.room.on("participant_connected", _on_participant_connected)
     ctx.room.on("participant_disconnected", _on_participant_disconnected)
+    ctx.room.on("track_subscribed", _on_track_subscribed)
 
     # Connect first so room.metadata (set by the dashboard token route) is
     # available before we build the session and assistant.
