@@ -44,10 +44,10 @@ from watchdog import CallWatchdog
 # played ONLY after `sip.callStatus="active"` — never on timeout.
 CALLER_PICKUP_TIMEOUT_S = 60.0
 
-# Small grace pause after pickup signal before TTS starts. Real callers say
-# "hallo?" right after answering — talking instantly feels robotic and clips
-# their greeting. 1.5s lets the human finish their hello before Lisa opens.
-POST_PICKUP_GRACE_S = 1.5
+# Grace pause after pickup before TTS starts. Operator-tuned: 15s lets the
+# callee fully settle, say multiple "hallo?" attempts if needed, and avoids
+# any chance of Lisa stepping on the human's greeting.
+POST_PICKUP_GRACE_S = 15.0
 
 # C13 — if the user is silent for this long after the opener finishes, prompt
 # them once. After SILENCE_HANGUP_THRESHOLD_S more, give up and mark a callback.

@@ -338,7 +338,7 @@ def _build_session(runtime_cfg: AgentRuntimeConfig, ctx: JobContext) -> AgentSes
         vad=ctx.proc.userdata["vad"],
         preemptive_generation=True,
         min_endpointing_delay=0.2,
-        max_endpointing_delay=1.5,
+        max_endpointing_delay=0.5,
         allow_interruptions=True,
         min_interruption_duration=1.0,
     )
