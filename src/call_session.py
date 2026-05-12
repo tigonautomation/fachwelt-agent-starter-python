@@ -44,10 +44,9 @@ from watchdog import CallWatchdog
 # played ONLY after `sip.callStatus="active"` — never on timeout.
 CALLER_PICKUP_TIMEOUT_S = 60.0
 
-# Grace pause after pickup before TTS starts. Operator-tuned: 15s lets the
-# callee fully settle, say multiple "hallo?" attempts if needed, and avoids
-# any chance of Lisa stepping on the human's greeting.
-POST_PICKUP_GRACE_S = 15.0
+# Grace pause after pickup before TTS starts. 2s = callee finishes "hallo?"
+# without Lisa clipping it, but no awkward dead air.
+POST_PICKUP_GRACE_S = 2.0
 
 # C13 — if the user is silent for this long after the opener finishes, prompt
 # them once. After SILENCE_HANGUP_THRESHOLD_S more, give up and mark a callback.
