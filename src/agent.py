@@ -20,7 +20,12 @@ from livekit.plugins import ai_coustics, deepgram, elevenlabs, openai, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from livekit.rtc import ParticipantKind
 
-from call_event_sink import CallEventSink, ToolInvoked, production_sink
+from call_event_sink import (
+    CallEventSink,
+    RecordingSink,
+    ToolInvoked,
+    production_sink,
+)
 from call_session import CallSession
 from config_loader import AgentRuntimeConfig, load_runtime_config
 from health import start_health_server
@@ -47,13 +52,6 @@ load_dotenv(".env.local")
 
 _active_sessions: int = 0
 _health_runner = None
-
-
-class _NullSink:
-    """Default sink for tests that construct FachweltAssistant without a session."""
-
-    def emit(self, event: object) -> None:
-        return None
 
 
 # Re-exports kept for test imports (`from agent import OPENER_AUDIO_PATH, ...`).
@@ -225,7 +223,10 @@ class FachweltAssistant(Agent):
         sink: CallEventSink | None = None,
     ) -> None:
         super().__init__(instructions=instructions or FACHWELT_PROMPT)
-        self._sink: CallEventSink = sink or _NullSink()
+        # RecordingSink as the default test fake: tests that don't supply a
+        # production sink can still inspect emitted events instead of having
+        # them silently swallowed by a no-op default.
+        self._sink: CallEventSink = sink or RecordingSink()
 
     @function_tool
     async def mark_qualified_send_email(self, context: RunContext, email: str):

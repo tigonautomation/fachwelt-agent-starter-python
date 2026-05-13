@@ -149,10 +149,24 @@ class LockedPrompt:
     text: str
 
     def __post_init__(self) -> None:
+        end_marker = "<!-- LOCKED:END -->"
+        open_count = 0
         for key in LOCKED_BLOCK_ORDER:
             marker = f"<!-- LOCKED:{key.upper()} -->"
             if marker not in self.text:
                 raise ValueError(f"LockedPrompt missing block: {key}")
+            open_count += 1
+        # A truncated/malformed block can leave the opening marker in place
+        # while losing its closing END marker. The strip-and-reapply path in
+        # `_apply_locked_blocks` relies on END to know where a block ends; a
+        # missing END would silently swallow the rest of the prompt on the
+        # next re-wrap. Enforce one END per opening marker.
+        end_count = self.text.count(end_marker)
+        if end_count < open_count:
+            raise ValueError(
+                f"LockedPrompt malformed: {open_count} block(s) open, "
+                f"{end_count} END marker(s)"
+            )
 
     @classmethod
     def from_raw(cls, prompt: str) -> LockedPrompt:

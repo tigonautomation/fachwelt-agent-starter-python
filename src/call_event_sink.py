@@ -166,8 +166,18 @@ class LogSink:
                     error_type=error_type,
                     error=error,
                 )
-            case UserTurnFinal() | AgentTurn():
-                pass  # turn counts live in the summary, not the log
+            case UserTurnFinal(text=text):
+                # Per-turn log line. Text *content* stays out (DSGVO + log
+                # bloat), but length and ordinal go in so a stuck-session
+                # post-mortem can correlate watchdog/health firings with the
+                # turn that triggered them.
+                log_event(
+                    self._call_id, "turn", role="user", text_len=len(text or "")
+                )
+            case AgentTurn(text=text):
+                log_event(
+                    self._call_id, "turn", role="agent", text_len=len(text or "")
+                )
 
 
 class SummarySink:
@@ -185,11 +195,17 @@ class SummarySink:
             case SessionError(source=source, error=error):
                 s.record_error(source=source, error=error)
             case UserTurnFinal(text=text):
-                s.user_turns += 1
-                s.record_turn("user", text)
+                # Counter + transcript MUST stay in sync. The health classifier
+                # uses `agent_turns == 0` as a hard-fail signal; if empty STT
+                # finals inflated `user_turns` past zero while `turns` stayed
+                # empty, a dead-air call could silently escape `HARD_FAIL`.
+                if (text or "").strip():
+                    s.user_turns += 1
+                    s.record_turn("user", text)
             case AgentTurn(text=text):
-                s.agent_turns += 1
-                s.record_turn("agent", text)
+                if (text or "").strip():
+                    s.agent_turns += 1
+                    s.record_turn("agent", text)
             case WatchdogTriggered(kind=kind):
                 s.watchdog_triggers += 1
                 s.final_state = "technical_callback"

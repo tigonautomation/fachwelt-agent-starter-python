@@ -88,6 +88,12 @@ class CallSession:
         self._caller_disconnected = caller_disconnected
         self._call_start_ts = call_start_ts
         self._on_finalize_extra = on_finalize
+        # `_finalize` registers BEFORE `session.start()` so a LiveKit error
+        # during startup still produces a summary. Without this flag the
+        # summary would emit `final_state=user_hangup` and the health
+        # classifier would mark a startup crash as `HARD_FAIL → agent_silent`
+        # — both misleading. Set to True only after `session.start()` returns.
+        self._started: bool = False
 
     async def run(self) -> None:
         self._wire_listeners()
@@ -102,6 +108,7 @@ class CallSession:
                 room=self._ctx.room,
                 room_options=self._room_options,
             )
+            self._started = True
             # Block 1 — gate opener on SIP pickup (`sip.callStatus=active`).
             # Race two events: pickup OR caller disconnect/timeout. If the
             # callee never answers (disconnect or 60s ceiling), bail without
