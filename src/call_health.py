@@ -65,6 +65,10 @@ def classify(summary: CallSummary) -> HealthVerdict:
 
     if summary.final_state == "technical_callback":
         hard.append("final_state_technical_callback")
+    if summary.final_state == "startup_aborted":
+        # session.start() raised — neither STT nor TTS pipelines came online.
+        # Always a worker fault, never a callee/carrier issue.
+        hard.append("startup_aborted")
     if summary.agent_turns == 0 and duration_s >= NO_PICKUP_DURATION_S:
         # Pickup happened (or call ran long) yet the agent never spoke. Either
         # the opener wedged or LLM/TTS never produced audio.

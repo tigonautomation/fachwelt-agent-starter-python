@@ -120,8 +120,8 @@ def test_summary_sink_translates_turn_events() -> None:
     sink = SummarySink(s)
     sink.emit(UserTurnFinal(text="ja gerne"))
     sink.emit(AgentTurn(text="Super, ich notiere das."))
-    sink.emit(UserTurnFinal(text=""))  # ignored
-    assert s.user_turns == 2  # counter increments even for empty text
+    sink.emit(UserTurnFinal(text=""))  # ignored: counter + transcript both skip
+    assert s.user_turns == 1
     assert s.agent_turns == 1
     assert [t["role"] for t in s.turns] == ["user", "agent"]
     assert s.turns[1]["text"] == "Super, ich notiere das."

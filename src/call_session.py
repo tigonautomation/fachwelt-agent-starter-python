@@ -332,11 +332,20 @@ class CallSession:
             self._disconnect_task.cancel()
         self._watchdog.stop()
         if not self._summary.final_state or self._summary.final_state == "unknown":
-            self._summary.final_state = "user_hangup"
+            # `_started` distinguishes "session.start() never returned" (worker
+            # crash) from "session ran, callee hung up" (normal end). The
+            # health classifier reads final_state, so the distinction must be
+            # set here, not inferred downstream.
+            self._summary.final_state = (
+                "user_hangup" if self._started else "startup_aborted"
+            )
+        # Invariant: final_state is non-empty + non-"unknown" by the time we
+        # emit. The health classifier downstream depends on this.
+        assert self._summary.final_state and self._summary.final_state != "unknown"
         self._summary.emit()
-        # Emit AFTER `call_summary` so the health classifier reads the final
-        # `final_state` value (the unknown→user_hangup default above must apply
-        # before classification, or the verdict goes stale).
+        # AFTER `call_summary` so the health classifier reads the final
+        # `final_state` (the unknown→default fixup above MUST apply before
+        # classification, or the verdict goes stale).
         emit_health(self._summary)
         if self._on_finalize_extra is not None:
             await self._on_finalize_extra()

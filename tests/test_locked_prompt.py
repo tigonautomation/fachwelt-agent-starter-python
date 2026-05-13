@@ -55,6 +55,18 @@ def test_direct_construction_with_all_blocks_succeeds() -> None:
     assert p.text == valid
 
 
+def test_direct_construction_without_end_markers_raises() -> None:
+    """All opening markers present but END markers missing → must reject.
+    Without this check, a tampered prompt could keep the disclosure-open
+    marker but lose the closing tag — and the next re-wrap would silently
+    swallow the rest of the prompt."""
+    half = "\n\n".join(
+        f"<!-- LOCKED:{k.upper()} --> body" for k in LOCKED_BLOCK_ORDER
+    )
+    with pytest.raises(ValueError, match="malformed"):
+        LockedPrompt(text=half)
+
+
 def test_block_order_preserved() -> None:
     p = LockedPrompt.from_raw("")
     indices = [p.text.index(m) for m in _markers()]

@@ -81,6 +81,15 @@ def test_soft_fail_when_only_webhook_failed() -> None:
     assert v.signals == ["webhook_failures_1"]
 
 
+def test_hard_fail_startup_aborted() -> None:
+    """`session.start()` failed before turn loop ran → always worker fault."""
+    s = _summary(user_turns=0, agent_turns=0, final_state="startup_aborted")
+    s.started_at = time.time() - 1.0  # too short to hit agent_silent rule
+    v = classify(s)
+    assert v.classification == HARD_FAIL
+    assert "startup_aborted" in v.signals
+
+
 def test_hard_fail_outranks_soft_fail() -> None:
     """Both hard and soft signals present → HARD_FAIL wins, but soft signals
     are preserved in the signals list so n8n can show full context."""
