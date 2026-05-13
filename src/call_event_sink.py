@@ -58,10 +58,14 @@ class SessionError(CallEvent):
 class UserTurnFinal(CallEvent):
     """STT produced a final transcript for a user utterance."""
 
+    text: str = ""
+
 
 @dataclass(frozen=True)
 class AgentTurn(CallEvent):
     """Conversation item added with role=assistant."""
+
+    text: str = ""
 
 
 @dataclass(frozen=True)
@@ -180,10 +184,12 @@ class SummarySink:
                 s.final_reason = reason
             case SessionError(source=source, error=error):
                 s.record_error(source=source, error=error)
-            case UserTurnFinal():
+            case UserTurnFinal(text=text):
                 s.user_turns += 1
-            case AgentTurn():
+                s.record_turn("user", text)
+            case AgentTurn(text=text):
                 s.agent_turns += 1
+                s.record_turn("agent", text)
             case WatchdogTriggered(kind=kind):
                 s.watchdog_triggers += 1
                 s.final_state = "technical_callback"
@@ -213,21 +219,21 @@ class WebhookSink:
                 fire_webhook(
                     self._call_id,
                     state,
-                    {"reason": reason, **fields},
+                    {"reason": reason, **fields, **self._transcript_payload()},
                     summary=self._summary,
                 )
             case SilenceHangup(reason=reason):
                 fire_webhook(
                     self._call_id,
                     "callback",
-                    {"reason": reason},
+                    {"reason": reason, **self._transcript_payload()},
                     summary=self._summary,
                 )
             case CallerHungUp(reason=reason):
                 fire_webhook(
                     self._call_id,
                     "caller_hangup",
-                    {"reason": reason},
+                    {"reason": reason, **self._transcript_payload()},
                     summary=self._summary,
                 )
             case WatchdogTriggered(kind=kind, elapsed=elapsed, threshold=threshold):
@@ -243,9 +249,18 @@ class WebhookSink:
                         "reason": f"watchdog_{kind}",
                         "elapsed": elapsed,
                         "threshold": threshold,
+                        **self._transcript_payload(),
                     },
                     summary=self._summary,
                 )
+
+    def _transcript_payload(self) -> dict[str, Any]:
+        # Snapshot of turns up to this terminal event. We copy the list so a
+        # follow-on watchdog/hangup emit doesn't see a mutated reference.
+        return {
+            "turns": list(self._summary.turns),
+            "transcript_truncated": self._summary.transcript_truncated,
+        }
 
 
 class CompositeSink:

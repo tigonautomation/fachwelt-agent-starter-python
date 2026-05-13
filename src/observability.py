@@ -58,6 +58,13 @@ def new_call_id(room_name: str) -> str:
     return f"{room_name}-{int(time.time())}-{uuid.uuid4().hex[:8]}"
 
 
+# Bounds the in-memory transcript ring and the JSON line we emit at session end.
+# 200 turns is roughly 5-7 minutes of natural B2B dialog; anything longer is
+# pathological (looping, watchdog wedge) and we'd rather truncate than blow the
+# log driver or webhook body.
+MAX_TRANSCRIPT_TURNS = 200
+
+
 @dataclass
 class CallSummary:
     """Aggregates per-call lifecycle metrics for emission at session end."""
@@ -73,9 +80,27 @@ class CallSummary:
     watchdog_triggers: int = 0
     webhook_failures: int = 0
     time_to_first_audio_ms: int | None = None
+    turns: list[dict[str, Any]] = field(default_factory=list)
+    transcript_truncated: bool = False
 
     def record_error(self, source: str, error: str) -> None:
         self.errors.append({"source": source, "error": error, "ts": time.time()})
+
+    def record_turn(self, role: str, text: str) -> None:
+        """Append one transcript turn. Caps at MAX_TRANSCRIPT_TURNS."""
+        text = (text or "").strip()
+        if not text:
+            return
+        if len(self.turns) >= MAX_TRANSCRIPT_TURNS:
+            self.transcript_truncated = True
+            return
+        self.turns.append(
+            {
+                "role": role,
+                "text": text,
+                "ts_offset": round(time.time() - self.started_at, 2),
+            }
+        )
 
     def emit(self) -> None:
         log_event(
@@ -91,6 +116,8 @@ class CallSummary:
             watchdog_triggers=self.watchdog_triggers,
             webhook_failures=self.webhook_failures,
             time_to_first_audio_ms=self.time_to_first_audio_ms,
+            turn_count=len(self.turns),
+            transcript_truncated=self.transcript_truncated,
         )
 
 

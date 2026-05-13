@@ -20,14 +20,24 @@ from typing import Any
 
 import pytest
 
-from call_event_sink import production_sink
+from call_event_sink import (
+    AgentTurn,
+    CallerHungUp,
+    SilenceHangup,
+    SummarySink,
+    ToolInvoked,
+    UserTurnFinal,
+    WatchdogTriggered,
+    WebhookSink,
+    production_sink,
+)
 from observability import (
+    MAX_TRANSCRIPT_TURNS,
     CallSummary,
     fire_webhook,
     log_event,
     new_call_id,
 )
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # D19/D20/D21 — observability primitives
@@ -75,6 +85,84 @@ def test_call_summary_emits_expected_fields(caplog: pytest.LogCaptureFixture) ->
     assert payload["final_state"] == "qualified"
     assert payload["errors"][0]["source"] == "elevenlabs"
     assert payload["duration_s"] >= 0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Transcript capture (Gap 3 — persist user/agent turn text via sink → webhook)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_record_turn_appends_role_text_and_offset() -> None:
+    s = CallSummary(call_id="c-t1", room="r")
+    s.record_turn("user", "Hallo")
+    s.record_turn("agent", "Guten Tag")
+    assert len(s.turns) == 2
+    assert s.turns[0]["role"] == "user"
+    assert s.turns[0]["text"] == "Hallo"
+    assert s.turns[1]["role"] == "agent"
+    assert "ts_offset" in s.turns[0]
+    assert s.transcript_truncated is False
+
+
+def test_record_turn_skips_empty_and_caps() -> None:
+    s = CallSummary(call_id="c-t2", room="r")
+    s.record_turn("user", "")
+    s.record_turn("user", "   ")
+    assert s.turns == []
+    for i in range(MAX_TRANSCRIPT_TURNS + 5):
+        s.record_turn("user", f"t{i}")
+    assert len(s.turns) == MAX_TRANSCRIPT_TURNS
+    assert s.transcript_truncated is True
+
+
+def test_summary_sink_translates_turn_events() -> None:
+    s = CallSummary(call_id="c-t3", room="r")
+    sink = SummarySink(s)
+    sink.emit(UserTurnFinal(text="ja gerne"))
+    sink.emit(AgentTurn(text="Super, ich notiere das."))
+    sink.emit(UserTurnFinal(text=""))  # ignored
+    assert s.user_turns == 2  # counter increments even for empty text
+    assert s.agent_turns == 1
+    assert [t["role"] for t in s.turns] == ["user", "agent"]
+    assert s.turns[1]["text"] == "Super, ich notiere das."
+
+
+class _CapturingWebhook:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+
+    def __call__(
+        self,
+        call_id: str,
+        event: str,
+        payload: dict[str, Any],
+        summary: CallSummary | None = None,
+    ) -> None:
+        self.calls.append((event, payload))
+
+
+def test_webhook_sink_attaches_turns_to_terminal_payloads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    s = CallSummary(call_id="c-t4", room="r")
+    s.record_turn("user", "ja")
+    s.record_turn("agent", "perfekt")
+    cap = _CapturingWebhook()
+    monkeypatch.setattr("call_event_sink.fire_webhook", cap)
+    sink = WebhookSink("c-t4", s)
+
+    sink.emit(ToolInvoked(state="qualified", reason="email_confirmed", fields={"email": "a@b.de"}))
+    sink.emit(SilenceHangup(reason="no_response_after_opener"))
+    sink.emit(CallerHungUp(reason="caller_disconnect"))
+    sink.emit(WatchdogTriggered(kind="llm_stuck", elapsed=12.0, threshold=10.0))
+
+    for _event, payload in cap.calls:
+        assert payload["turns"] == s.turns
+        assert payload["transcript_truncated"] is False
+    # Snapshot semantics: mutating summary.turns later doesn't change past payloads.
+    s.record_turn("user", "nachgereicht")
+    for _event, payload in cap.calls:
+        assert all(t["text"] != "nachgereicht" for t in payload["turns"])
 
 
 # ─────────────────────────────────────────────────────────────────────────────

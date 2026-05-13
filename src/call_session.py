@@ -33,6 +33,7 @@ from call_event_sink import (
     SilenceReprompt,
     UserTurnFinal,
 )
+from call_health import emit_health
 from config_loader import AgentRuntimeConfig
 from observability import CallSummary, log_event
 from opener import OPENER_TEXT, opener_audio_frames, validate_opener_audio
@@ -176,13 +177,30 @@ class CallSession:
 
         def _on_user_input(ev) -> None:
             if getattr(ev, "is_final", True):
-                sink.emit(UserTurnFinal())
+                # `transcript` is the canonical field on STT final events; fall
+                # back through a few shapes seen across LK Agents versions so a
+                # quiet upstream rename doesn't silently drop transcript capture.
+                text = (
+                    getattr(ev, "transcript", None)
+                    or getattr(ev, "text", None)
+                    or ""
+                )
+                sink.emit(UserTurnFinal(text=str(text)))
                 engaged.set()
 
         def _on_conversation_item(ev) -> None:
             item = getattr(ev, "item", None)
             if item is not None and getattr(item, "role", None) == "assistant":
-                sink.emit(AgentTurn())
+                # `text_content` is the joined string view; some versions only
+                # expose `content` as a list of parts. Coerce to a plain string.
+                text = getattr(item, "text_content", None)
+                if text is None:
+                    content = getattr(item, "content", None)
+                    if isinstance(content, list):
+                        text = " ".join(str(c) for c in content if c)
+                    else:
+                        text = str(content) if content else ""
+                sink.emit(AgentTurn(text=str(text or "")))
 
         self._session.on("error", _on_session_error)
         self._session.on("user_input_transcribed", _on_user_input)
@@ -309,5 +327,9 @@ class CallSession:
         if not self._summary.final_state or self._summary.final_state == "unknown":
             self._summary.final_state = "user_hangup"
         self._summary.emit()
+        # Emit AFTER `call_summary` so the health classifier reads the final
+        # `final_state` value (the unknown→user_hangup default above must apply
+        # before classification, or the verdict goes stale).
+        emit_health(self._summary)
         if self._on_finalize_extra is not None:
             await self._on_finalize_extra()
