@@ -2,6 +2,26 @@
 
 > **REQUIRED READING vor jeder Session am Worker:** [`../outbound-agent-prototype/docs/prd-launch-readiness.md`](../outbound-agent-prototype/docs/prd-launch-readiness.md) — Launch-Gate-Scope für Fachwelt Outbound, Locked Decisions, Customer-Klärungsliste.
 
+## Session-Stand (2026-05-13)
+
+Phase: Pre-Launch. Worker production-hardened + Gap 2/3 + Architecture-Deepening abgeschlossen. Branch `edon/qa-sweep-fixes` → Coolify Worker Staging.
+
+Neue Module seit 2026-04-30 Hardening:
+- `src/call_health.py` — Per-Call Health-Classifier (`HARD_FAIL` / `SOFT_FAIL` / `NORMAL_NO_PICKUP` / `HEALTHY`). `emit_health()` läuft in `_finalize` nach `summary.emit()`. Posten via Log-Line `call_health` für n8n-Konsum.
+- `CallSummary.turns` + `record_turn()` + `MAX_TRANSCRIPT_TURNS=200` — Transcript-Buffer. Snapshot in jedes Terminal-Webhook-Payload (ToolInvoked / SilenceHangup / CallerHungUp / WatchdogTriggered).
+- `UserTurnFinal.text` / `AgentTurn.text` carry STT/LLM-Text durch Event-Sink. `LogSink` emittet `turn` event mit `text_len` (kein Content — DSGVO).
+
+Deepening-Fixes 2026-05-13:
+- `CallSession._started` flag → `final_state = "startup_aborted"` bei `session.start`-Crash. Classifier mappt das auf HARD_FAIL.
+- Counter/Transcript-Lockstep in `SummarySink`: empty STT-Text skippt counter (sonst False-Negative auf `agent_silent_after_pickup`).
+- Finalize-Ordering pinned per `assert self._summary.final_state and != "unknown"` vor `summary.emit()`.
+- `LockedPrompt.__post_init__` validiert END-Marker-Count (rejects tampered prompts).
+- `_NullSink` raus, `RecordingSink` als Default für FachweltAssistant ohne expliziten Sink (tests können events inspizieren).
+
+Tests: 32 non-LLM passing (7 LLM-API tests fail ohne Creds — pre-existing, nicht in CI). Run: `uv run pytest --ignore=tests/test_conversations.py --ignore=tests/test_agent.py -q`.
+
+Next: 3 Real-Mic Test-Calls auf Edon-Linie (Launch-Gate Pre-Condition, Gap 6 in PRD).
+
 This is a LiveKit Agents project. LiveKit Agents is a Python SDK for building voice AI agents. This project is intended to be used with LiveKit Cloud. See @README.md for more about the rest of the LiveKit ecosystem.
 
 The following is a guide for working with this project.
